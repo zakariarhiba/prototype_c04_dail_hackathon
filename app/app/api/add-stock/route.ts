@@ -1,4 +1,4 @@
-import { confirmReceipt } from "@/app/lib/store";
+import { addNewStock } from "@/app/lib/store";
 import { getSession } from "@/app/lib/session";
 
 export async function POST(request: Request) {
@@ -7,12 +7,12 @@ export async function POST(request: Request) {
     return Response.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
   if (session.role !== "clerk") {
-    return Response.json({ ok: false, error: "Only a parts receiving lead can confirm a receipt." }, { status: 403 });
+    return Response.json({ ok: false, error: "Only a parts receiving lead can add stock." }, { status: 403 });
   }
 
   const body = await request.json();
   try {
-    const result = await confirmReceipt({ ...body, clerk_name: session.name });
+    const result = await addNewStock({ ...body, clerk_name: session.name });
     return Response.json({ ok: true, ...result });
   } catch (err) {
     return Response.json(

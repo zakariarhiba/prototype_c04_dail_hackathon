@@ -6,10 +6,10 @@
   --color-text: #1a1d21;
   --color-text-muted: #5c6470;
   --color-border: #e2e5e9;
-  --color-primary: #1f6feb;
+  --color-primary: #4527d1;
   --color-primary-contrast: #ffffff;
-  --color-primary-teinte: rgba(31, 111, 235, 0.12);
-  --color-primary-teinte-forte: rgba(31, 111, 235, 0.25);
+  --color-primary-teinte: rgba(69, 39, 209, 0.12);
+  --color-primary-teinte-forte: rgba(69, 39, 209, 0.25);
   --color-ombre: rgba(0, 0, 0, 0.12);
 
   --color-succes-bg: #e6f4ea;
@@ -41,10 +41,10 @@
     --color-text: #e8eaed;
     --color-text-muted: #9aa1ac;
     --color-border: #33373e;
-    --color-primary: #4c8dfa;
-    --color-primary-contrast: #0b1220;
-    --color-primary-teinte: rgba(76, 141, 250, 0.18);
-    --color-primary-teinte-forte: rgba(76, 141, 250, 0.32);
+    --color-primary: #9a8cf5;
+    --color-primary-contrast: #140f33;
+    --color-primary-teinte: rgba(154, 140, 245, 0.18);
+    --color-primary-teinte-forte: rgba(154, 140, 245, 0.32);
     --color-ombre: rgba(0, 0, 0, 0.4);
 
     --color-succes-bg: #163524;
@@ -69,10 +69,10 @@
   --color-text: #1a1d21;
   --color-text-muted: #5c6470;
   --color-border: #e2e5e9;
-  --color-primary: #1f6feb;
+  --color-primary: #4527d1;
   --color-primary-contrast: #ffffff;
-  --color-primary-teinte: rgba(31, 111, 235, 0.12);
-  --color-primary-teinte-forte: rgba(31, 111, 235, 0.25);
+  --color-primary-teinte: rgba(69, 39, 209, 0.12);
+  --color-primary-teinte-forte: rgba(69, 39, 209, 0.25);
   --color-ombre: rgba(0, 0, 0, 0.12);
   --color-succes-bg: #e6f4ea;
   --color-succes-text: #1e7a34;
@@ -94,10 +94,10 @@
   --color-text: #e8eaed;
   --color-text-muted: #9aa1ac;
   --color-border: #33373e;
-  --color-primary: #4c8dfa;
-  --color-primary-contrast: #0b1220;
-  --color-primary-teinte: rgba(76, 141, 250, 0.18);
-  --color-primary-teinte-forte: rgba(76, 141, 250, 0.32);
+  --color-primary: #9a8cf5;
+  --color-primary-contrast: #140f33;
+  --color-primary-teinte: rgba(154, 140, 245, 0.18);
+  --color-primary-teinte-forte: rgba(154, 140, 245, 0.32);
   --color-ombre: rgba(0, 0, 0, 0.4);
   --color-succes-bg: #163524;
   --color-succes-text: #6fd68f;
@@ -701,7 +701,7 @@ input[type="search"] {
   border-left-color: var(--color-neutre-text);
 }
 
-/* --- Login screen (cosmetic only, no real auth) --- */
+/* --- Login screen (real session since phase 10; see docs/01-system-design.md §10) --- */
 
 .login-screen {
   display: flex;
@@ -719,7 +719,7 @@ input[type="search"] {
   background:
     linear-gradient(180deg, rgba(11, 18, 32, 0.15) 0%, rgba(11, 18, 32, 0.85) 100%),
     url("/login-illustration.png") center / cover no-repeat,
-    linear-gradient(160deg, #0b1220 0%, #1f3a63 55%, #1f6feb 100%);
+    linear-gradient(160deg, #0b1220 0%, #2a1f63 55%, #4527d1 100%);
   color: #fff;
 }
 

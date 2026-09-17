@@ -29,7 +29,10 @@ phase doc, stop, wait for an explicit yes before starting the next one.
 | 6 | [phase-06-pending-clobber-guard.md](phase-06-pending-clobber-guard.md) | Fixed silent pending-scan/invoice clobbering, black favicon, dev-mode indicator badge | Awaiting review |
 | 7 | [phase-07-brand-assets.md](phase-07-brand-assets.md) | Generated Dockline logo/hero/login art and evidence schemas wired in, transparent-icon fix, Makefile | Awaiting review |
 | 8 | [phase-08-immersive-transitions.md](phase-08-immersive-transitions.md) | Splash entry animation, login/logout transition overlays, route progress bar | Awaiting review |
-| 9 | [phase-09-design-v2-auth-inventory-kpis.md](phase-09-design-v2-auth-inventory-kpis.md) | Design doc update only: real auth/session, inventory ledger, alarms, KPIs (§10-§13); no app code yet | Awaiting review |
+| 9 | [phase-09-design-v2-auth-inventory-kpis.md](phase-09-design-v2-auth-inventory-kpis.md) | Design doc update only: real auth/session, inventory ledger, alarms, KPIs (§10-§13); no app code yet | Validated 2026-09-17 |
+| 10 | [phase-10-real-auth-session.md](phase-10-real-auth-session.md) | Real signed-cookie session over seeded clerk/approver users, replacing v1's localStorage-only login; role-gated confirm-receipt/approve-notice | Validated 2026-09-17 |
+| 11 | [phase-11-inventory-ledger.md](phase-11-inventory-ledger.md) | Inventory ledger read-model (SUM(receipts.accepted) by part) + clerk-only "add new stock" write | Awaiting review |
+| 12 | [phase-12-trast-client-fit.md](phase-12-trast-client-fit.md) | Client-fit rebrand for hackathon-assigned client trast: indigo palette and terminology, then trast's real logo/name on login+app shell, recolored art, simplified login credentials, simulation copy consolidated to About page | Awaiting review |
 
 Phases 1-4 are written retroactively (the workflow below didn't exist yet
 when they were built) — flagged here so review can catch up before any new

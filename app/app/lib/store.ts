@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ensureSchema, getPool, nextId } from "./db";
+import { hashPassword, verifyPassword } from "./auth";
 import type {
   Order,
   DeliveryNote,
@@ -11,6 +12,7 @@ import type {
   DiscrepancyNotice,
   EvidenceLine,
   ScanClassification,
+  InventoryLedgerLine,
 } from "./types";
 
 // ---------------------------------------------------------------------------
@@ -42,6 +44,22 @@ function loadSeed(): SeedData {
 // path has somewhere to land. Everything else in the seed is initial.json
 // verbatim.
 const DEMO_ADDED_ORDER: Order = { id: "PO-2", part: "BRAKE-PAD-Y", quantity: 5 };
+
+// v2 demo users (docs/01-system-design.md §10): exactly the two roles §1
+// defines, seeded alongside orders/DNs so the repeatable-start-state
+// handover requirement still holds after login becomes real. Demo
+// credentials, documented in README.md, not secret. `username` is what's
+// typed to log in; `name` is the display name shown in the UI.
+const DEMO_USERS: {
+  id: string;
+  username: string;
+  name: string;
+  role: "clerk" | "approver";
+  password: string;
+}[] = [
+  { id: "user-clerk-1", username: "priya_lead", name: "Priya, Parts Receiving Lead", role: "clerk", password: "@Passw0rd1" },
+  { id: "user-approver-1", username: "sam_lead", name: "Sam, Reconciliation Lead", role: "approver", password: "@Passw0rd2" },
+];
 
 type PendingMemory = {
   pendingScan: PendingScan | null;
@@ -84,7 +102,7 @@ export async function getState(): Promise<AppState> {
       "select id, order_id, part, listed_quantity, logged_via from delivery_notes order by id"
     ),
     pool.query<Receipt>(
-      "select id, delivery_note, received, damaged, accepted from receipts order by id"
+      "select id, delivery_note, received, damaged, accepted, created_at from receipts order by id"
     ),
     pool.query<DiscardedDuplicate>(
       "select scan_id, order_id, part, listed_quantity, matched_delivery_note, confirmed_by_clerk_at from discarded_duplicates order by confirmed_by_clerk_at"
@@ -113,8 +131,15 @@ export async function resetState(): Promise<void> {
   await pool.query("begin");
   try {
     await pool.query(
-      "truncate discrepancy_notices, discarded_duplicates, receipts, delivery_notes, orders, counters"
+      "truncate discrepancy_notices, discarded_duplicates, receipts, delivery_notes, orders, counters, users"
     );
+    for (const u of DEMO_USERS) {
+      const password_hash = await hashPassword(u.password);
+      await pool.query(
+        "insert into users (id, username, name, role, password_hash) values ($1, $2, $3, $4, $5)",
+        [u.id, u.username, u.name, u.role, password_hash]
+      );
+    }
     for (const o of [...seed.orders, DEMO_ADDED_ORDER]) {
       await pool.query("insert into orders (id, part, quantity) values ($1, $2, $3)", [
         o.id,
@@ -140,6 +165,12 @@ export async function resetState(): Promise<void> {
     // never collides with the seed's own DN-1.
     await pool.query("insert into counters (key, value) values ('DN', $1)", [seed.delivery_notes.length]);
     await pool.query("insert into counters (key, value) values ('RC', $1)", [seed.receipts.length]);
+    // PO-1 (seed) and PO-2 (DEMO_ADDED_ORDER, see note above) are the two
+    // fixed order IDs already in use; nextId('PO') must start past them for
+    // "add new stock" (§11) to never collide.
+    await pool.query("insert into counters (key, value) values ('PO', $1)", [
+      seed.orders.length + 1,
+    ]);
     await pool.query("commit");
   } catch (err) {
     await pool.query("rollback");
@@ -152,6 +183,29 @@ export async function resetState(): Promise<void> {
     scanScenarioIndex: 0,
     invoiceScenarioIndex: 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// v2 auth: real credential check against the seeded users table (§10). Not
+// real identity verification (demo credentials, no password policy) — see
+// auth.ts and §8 for what's still out of scope.
+// ---------------------------------------------------------------------------
+
+export async function verifyLogin(
+  username: string,
+  password: string
+): Promise<{ id: string; name: string; role: "clerk" | "approver" } | null> {
+  await ensureSchema();
+  const pool = getPool();
+  const res = await pool.query<{ id: string; name: string; role: "clerk" | "approver"; password_hash: string }>(
+    "select id, name, role, password_hash from users where username = $1",
+    [username]
+  );
+  const row = res.rows[0];
+  if (!row) return null;
+  const ok = await verifyPassword(password, row.password_hash);
+  if (!ok) return null;
+  return { id: row.id, name: row.name, role: row.role };
 }
 
 // ---------------------------------------------------------------------------
@@ -366,6 +420,7 @@ export async function confirmReceipt(input: {
     received: input.received,
     damaged: input.damaged,
     accepted: input.accepted,
+    created_at: new Date().toISOString(),
   };
   await pool.query(
     "insert into delivery_notes (id, order_id, part, listed_quantity, logged_via) values ($1, $2, $3, $4, $5)",
@@ -425,7 +480,7 @@ export async function simulateIncomingInvoice(): Promise<PendingInvoiceReview> {
       "select id, order_id, part, listed_quantity, logged_via from delivery_notes where order_id = $1 and part = $2",
       [scenario.order_id, scenario.part]
     ),
-    pool.query<Receipt>("select id, delivery_note, received, damaged, accepted from receipts"),
+    pool.query<Receipt>("select id, delivery_note, received, damaged, accepted, created_at from receipts"),
   ]);
 
   const evidence: EvidenceLine[] = deliveryNotes.rows.map((dn) => {
@@ -518,4 +573,73 @@ export async function approveDiscrepancyNotice(input: {
 
 export function dismissPendingInvoice(): void {
   pendingMemory().pendingInvoice = null;
+}
+
+// ---------------------------------------------------------------------------
+// v2 inventory ledger (§11): a read-model, not a new source of truth.
+// on_hand_accepted is SUM(receipts.accepted) grouped by part, computed fresh
+// on every read so it can never drift from the receipts it's built from.
+// Labeled "Received-to-date by part" in the UI, never "stock on hand" — this
+// system has no putaway/pick/consumption events.
+// ---------------------------------------------------------------------------
+
+export async function getInventoryLedger(): Promise<InventoryLedgerLine[]> {
+  await ensureSchema();
+  const pool = getPool();
+  const res = await pool.query<InventoryLedgerLine>(
+    `select dn.part as part,
+            sum(r.accepted)::int as on_hand_accepted,
+            max(r.created_at) as last_movement_at
+     from receipts r
+     join delivery_notes dn on dn.id = r.delivery_note
+     group by dn.part
+     order by dn.part`
+  );
+  return res.rows;
+}
+
+// "Add new stock" (§11): a clerk-entered {part, quantity} creates one new
+// Order/DeliveryNote/Receipt in one shot — a clerk asserting "this much of
+// this part just arrived and all of it was accepted" — skipping the
+// scan/duplicate-check step because there is no PO/DN to check it against
+// yet. A real write, but only to this app's own tables (§11), gated to
+// role=clerk at the API layer same as confirmReceipt.
+export async function addNewStock(input: {
+  part: string;
+  quantity: number;
+  clerk_name: string;
+}): Promise<{ order: Order; deliveryNote: DeliveryNote; receipt: Receipt }> {
+  await ensureSchema();
+  const part = input.part.trim();
+  if (!part) {
+    throw new Error("Part is required.");
+  }
+  if (!Number.isInteger(input.quantity) || input.quantity <= 0) {
+    throw new Error("Quantity must be a positive whole number.");
+  }
+
+  const pool = getPool();
+  const orderId = await nextId("PO");
+  const dnId = await nextId("DN");
+  const rcId = await nextId("RC");
+
+  await pool.query("insert into orders (id, part, quantity) values ($1, $2, $3)", [
+    orderId,
+    part,
+    input.quantity,
+  ]);
+  await pool.query(
+    "insert into delivery_notes (id, order_id, part, listed_quantity, logged_via) values ($1, $2, $3, $4, 'clerk_added_stock')",
+    [dnId, orderId, part, input.quantity]
+  );
+  await pool.query(
+    "insert into receipts (id, delivery_note, received, damaged, accepted) values ($1, $2, $3, $4, $5)",
+    [rcId, dnId, input.quantity, 0, input.quantity]
+  );
+
+  return {
+    order: { id: orderId, part, quantity: input.quantity },
+    deliveryNote: { id: dnId, order_id: orderId, part, listed_quantity: input.quantity, logged_via: "clerk_added_stock" },
+    receipt: { id: rcId, delivery_note: dnId, received: input.quantity, damaged: 0, accepted: input.quantity, created_at: new Date().toISOString() },
+  };
 }

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dockline — Case C04 Delivery Reconciliation Prototype",
+  title: "trast — Case C04 Delivery Reconciliation Prototype",
   description: "Delivery note vs invoice reconciliation prototype (synthetic exercise data)",
 };
 

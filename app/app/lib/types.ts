@@ -9,7 +9,7 @@ export type DeliveryNote = {
   order_id: string;
   part: string;
   listed_quantity: number;
-  logged_via: "seed" | "clerk_confirmed";
+  logged_via: "seed" | "clerk_confirmed" | "clerk_added_stock";
 };
 
 export type Receipt = {
@@ -18,6 +18,13 @@ export type Receipt = {
   received: number;
   damaged: number;
   accepted: number;
+  created_at: string;
+};
+
+export type InventoryLedgerLine = {
+  part: string;
+  on_hand_accepted: number;
+  last_movement_at: string;
 };
 
 export type ScanClassification = "NEW" | "DUPLICATE" | "AMBIGUOUS";

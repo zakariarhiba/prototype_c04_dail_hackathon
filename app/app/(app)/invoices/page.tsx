@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ResetButton from "../../components/ResetButton";
+import { useSession } from "../../lib/useSession";
 import type { DiscrepancyNotice, PendingInvoiceReview } from "../../lib/types";
 
 type StateResponse = {
@@ -11,7 +12,7 @@ type StateResponse = {
 
 export default function InvoicesPage() {
   const [state, setState] = useState<StateResponse | null>(null);
-  const [approverName, setApproverName] = useState("Accounting clerk on duty");
+  const { user } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,7 +46,6 @@ export default function InvoicesPage() {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         invoice_id: state.pendingInvoice.invoice_id,
-        approved_by: approverName,
       }),
     });
     const data = await res.json();
@@ -72,16 +72,7 @@ export default function InvoicesPage() {
 
       <section className="carte space-y-3">
         <h2 className="font-medium">Incoming invoice event</h2>
-        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Labeled simulation: no real EDI/accounting feed is wired up. Each
-          click alternates between an invoice that overcharges (ignores a
-          rejected damaged unit) and one that already bills correctly, so
-          both the mismatch and clean paths are demonstrable. The
-          reconciliation math itself, summing <strong>accepted</strong> (not
-          received) quantities across every delivery note logged for the PO,
-          and diffing against the invoiced quantity, is computed live from
-          current state.
-        </p>
+        <span className="etiquette-statut etiquette-statut--attention">Simulated — no real EDI/accounting feed</span>
         <button className="bouton" onClick={simulateInvoice} disabled={busy || !!pending}>
           {busy ? "Working..." : "Simulate incoming invoice"}
         </button>
@@ -179,11 +170,19 @@ export default function InvoicesPage() {
           <div className="flex items-center gap-3">
             {!pending.clean && (
               <>
-                <div className="champ" style={{ flexDirection: "row", alignItems: "center", gap: "0.5rem" }}>
-                  <label>Approver</label>
-                  <input value={approverName} onChange={(e) => setApproverName(e.target.value)} />
-                </div>
-                <button className="bouton bouton--sombre" onClick={approve} disabled={busy}>
+                <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+                  Approving as <strong>{user?.name ?? "…"}</strong>.
+                  {user && user.role !== "approver" && (
+                    <span style={{ color: "var(--color-erreur-text)" }}>
+                      {" "}Signed in as a parts receiving lead — only a reconciliation lead can approve a notice.
+                    </span>
+                  )}
+                </p>
+                <button
+                  className="bouton bouton--sombre"
+                  onClick={approve}
+                  disabled={busy || user?.role !== "approver"}
+                >
                   {busy ? "Working..." : "Approve discrepancy notice (simulated)"}
                 </button>
               </>

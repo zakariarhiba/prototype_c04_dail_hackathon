@@ -55,11 +55,11 @@ export default function TransitionOverlay({
         <div className="intro-cube">
           <div className="intro-cube__face intro-cube__face--front">
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size overlay art, next/image adds nothing here */}
-            <img src="/dockline-mark.png" width={48} height={48} alt="" />
+            <img src="/trast-mark.png" width={48} height={48} alt="" />
           </div>
           <div className="intro-cube__face intro-cube__face--back">
             {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size overlay art, next/image adds nothing here */}
-            <img src="/dockline-mark.png" width={48} height={48} alt="" />
+            <img src="/trast-mark.png" width={48} height={48} alt="" />
           </div>
           <div className="intro-cube__face intro-cube__face--right" />
           <div className="intro-cube__face intro-cube__face--left" />

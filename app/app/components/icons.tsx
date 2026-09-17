@@ -84,6 +84,16 @@ export function InboxIcon({ className }: IconProps) {
   );
 }
 
+export function BoxIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <path d="M21 8 12 3 3 8l9 5 9-5Z" />
+      <path d="M3 8v9l9 5 9-5V8" />
+      <path d="M12 13v9" />
+    </svg>
+  );
+}
+
 export function ReceiptIcon({ className }: IconProps) {
   return (
     <svg {...base} className={className} aria-hidden="true">

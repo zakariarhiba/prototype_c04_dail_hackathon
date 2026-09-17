@@ -3,6 +3,23 @@
 -- so switching later is just pointing DATABASE_URL at a Supabase project
 -- and re-running this file. See docs/01-system-design.md §9.
 
+-- v2: real auth/session (docs/01-system-design.md §10). Seed credentials
+-- are demo values, not secret; see README. `username` is the login
+-- identifier (e.g. "priya_lead"); `name` is the display name shown in the
+-- UI (e.g. "Priya, Parts Receiving Lead") — kept separate so the login
+-- field can be short/professional while the UI still reads naturally.
+create table if not exists users (
+  id text primary key,
+  username text not null unique,
+  name text not null,
+  role text not null check (role in ('clerk', 'approver')),
+  password_hash text not null
+);
+
+-- Idempotent add for a database created before `username` existed.
+alter table if exists users add column if not exists username text;
+update users set username = lower(replace(split_part(name, ',', 1), ' ', '_')) where username is null;
+
 create table if not exists orders (
   id text primary key,
   part text not null,
@@ -22,8 +39,14 @@ create table if not exists receipts (
   delivery_note text not null references delivery_notes(id),
   received int not null,
   damaged int not null,
-  accepted int not null
+  accepted int not null,
+  created_at timestamptz not null default now()
 );
+
+-- v2: inventory ledger (docs/01-system-design.md §11) needs a per-receipt
+-- timestamp to derive last_movement_at. Idempotent add for databases created
+-- before this column existed; new databases get it from the create above.
+alter table if exists receipts add column if not exists created_at timestamptz not null default now();
 
 create table if not exists discarded_duplicates (
   scan_id text primary key,

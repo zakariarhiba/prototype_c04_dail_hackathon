@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ResetButton from "../../components/ResetButton";
+import { useSession } from "../../lib/useSession";
 import type {
   DeliveryNote,
   DiscardedDuplicate,
@@ -28,7 +29,7 @@ export default function ReceivingPage() {
   const [received, setReceived] = useState<number>(0);
   const [damaged, setDamaged] = useState<number>(0);
   const [accepted, setAccepted] = useState<number>(0);
-  const [clerkName, setClerkName] = useState("Clerk on duty");
+  const { user } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,7 +75,6 @@ export default function ReceivingPage() {
         received,
         damaged,
         accepted,
-        clerk_name: clerkName,
       }),
     });
     const data = await res.json();
@@ -96,21 +96,13 @@ export default function ReceivingPage() {
 
       <section className="carte space-y-3">
         <h2 className="font-medium">Incoming delivery note event</h2>
-        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          This button is a labeled simulation: there is no real scanner
-          wired up. Each click advances through a fixed rotation of three
-          scenarios (ordinary new delivery, likely duplicate, and a
-          genuinely ambiguous case) so the demo reliably shows all three
-          paths. The system&apos;s classification of whichever scenario
-          comes up <em>is</em> computed live from current state, not
-          scripted per scenario.
-        </p>
+        <span className="etiquette-statut etiquette-statut--attention">Simulated — no real scanner</span>
         <button className="bouton" onClick={simulateScan} disabled={busy || !!pending}>
           {busy ? "Working..." : "Simulate incoming delivery note"}
         </button>
         {pending && (
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            A scan is pending clerk confirmation below — resolve it before
+            A scan is pending parts receiving lead confirmation below — resolve it before
             simulating another.
           </p>
         )}
@@ -160,7 +152,7 @@ export default function ReceivingPage() {
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-medium text-sm">Clerk confirmation (required before anything is saved)</h3>
+            <h3 className="font-medium text-sm">Parts receiving lead confirmation (required before anything is saved)</h3>
 
             <div className="champ">
               <label>Confirm or correct the flag:</label>
@@ -217,14 +209,22 @@ export default function ReceivingPage() {
               </p>
             )}
 
-            <div className="champ max-w-xs">
-              <label>Clerk name</label>
-              <input value={clerkName} onChange={(e) => setClerkName(e.target.value)} />
-            </div>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+              Confirming as <strong>{user?.name ?? "…"}</strong>.
+            </p>
+            {user && user.role !== "clerk" && (
+              <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>
+                Signed in as a reconciliation lead — only a parts receiving lead can confirm a receipt.
+              </p>
+            )}
 
             {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
 
-            <button className="bouton bouton--sombre" onClick={submitConfirmation} disabled={busy || !decision}>
+            <button
+              className="bouton bouton--sombre"
+              onClick={submitConfirmation}
+              disabled={busy || !decision || user?.role !== "clerk"}
+            >
               {busy ? "Saving..." : "Confirm"}
             </button>
           </div>

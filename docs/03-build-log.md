@@ -46,3 +46,35 @@ feature is either a real write to the app's own DB (auth session,
 inventory ledger, add-stock) or a real computed read (KPIs, alarms), never
 a new external action. Full phased plan in
 `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
+
+### Event 2 — hackathon brief confirmed client as trast; branding escalated
+
+What happened / what changed: after phases 10-11 (auth, inventory ledger)
+were built, the hackathon organisers sent a mid-build update confirming
+the assigned exercise client as trast (`https://trast.de/`), reframing the
+exercise user as "the parts receiving lead," and adding client fit
+(look/feel, wording, workflow) as an explicit review criterion. Same day,
+Zakaria asked to go further than an initial color-only reskin: use trast's
+actual logo/name on the login screen and app shell, simplify the demo
+login credentials to a professional username/password format, and move
+the dev-facing "why this is simulated" explanations off the working
+screens onto the About page.
+
+What we did in response: fetched and reviewed trast.de directly (not
+guessed) for its real palette/tone before touching any code; recolored the
+theme and the existing raster brand art in place (Pillow hue-shift, not a
+full re-generation) rather than rebuilding illustrations from scratch;
+downloaded trast's actual logo/mark from their site and swapped it in on
+every surface that showed the old generated "Dockline" mark (login,
+topbar/sidebar, landing header, splash, transition overlay); added a
+separate `username` column to `users` so login uses a short identifier
+(`priya_lead`/`sam_lead`) while the friendly display name stays for the
+UI; consolidated the per-page simulation explanations into the About page.
+Kept "Dockline" as the internal project name in `docs/`/`dev-docs`/DB
+comments — only user-visible brand surfaces changed.
+
+Why: `docs/01-system-design.md` §14 records the fetched brand reference and
+each decision inline (why reskin-then-real-logo, why username is separate
+from display name, why the raster art was recolored instead of
+regenerated). Full verification and file-by-file diff in
+`dev-docs/phase-12-trast-client-fit.md`.

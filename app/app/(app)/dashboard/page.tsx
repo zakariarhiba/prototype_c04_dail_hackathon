@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ResetButton from "../../components/ResetButton";
+import { useSession } from "../../lib/useSession";
 
 type StateResponse = {
   deliveryNotes: unknown[];
@@ -14,10 +15,9 @@ type StateResponse = {
 
 export default function Home() {
   const [state, setState] = useState<StateResponse | null>(null);
-  const [name, setName] = useState<string | null>(null);
+  const { user } = useSession();
 
   useEffect(() => {
-    setName(localStorage.getItem("c04_user_name"));
     fetch("/api/state")
       .then((r) => r.json())
       .then(setState);
@@ -53,7 +53,7 @@ export default function Home() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Bienvenue{name ? `, ${name}` : ""}</h1>
+      <h1 className="text-2xl font-semibold">Welcome{user ? `, ${user.name}` : ""}</h1>
       <p style={{ color: "var(--color-text-muted)" }}>
         Case C04. The client&apos;s pain: at the loading bay they record what
         arrived; later someone reconciles the invoice and cannot tell whether
@@ -71,13 +71,13 @@ export default function Home() {
         ))}
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-3">
         <Link href="/receiving" className="carte-lien">
           <h2 className="font-semibold mb-1">1. Receiving</h2>
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
             Simulate an incoming delivery-note scan, see the system&apos;s
             new-vs-duplicate flag with its reasoning, then confirm or correct
-            it as the receiving clerk.
+            it as the parts receiving lead.
           </p>
         </Link>
         <Link href="/invoices" className="carte-lien">
@@ -88,22 +88,20 @@ export default function Home() {
             evidence, and approve (or not) a simulated discrepancy notice.
           </p>
         </Link>
+        <Link href="/inventory" className="carte-lien">
+          <h2 className="font-semibold mb-1">3. Inventory</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            See received-to-date by part, summed live from accepted
+            receipts, and add new stock as the parts receiving lead.
+          </p>
+        </Link>
       </div>
 
-      <div className="message message--attention space-y-2">
-        <p className="font-medium">What&apos;s real vs. simulated in this prototype</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Real: new-vs-duplicate classification, computed from live state each time.</li>
-          <li>Real: invoice reconciliation math (sum of accepted, not received) and evidence trail.</li>
-          <li>Real: nothing is written to state without an explicit human confirmation/approval click.</li>
-          <li>Simulated: the incoming scan and incoming invoice events themselves (buttons, not a real scanner/EDI feed).</li>
-          <li>Simulated: the discrepancy notice — generated and displayed, never actually sent anywhere.</li>
-          <li>Simulated: login (this session&apos;s name is not checked against anything real).</li>
-        </ul>
-      </div>
-
-      <div>
+      <div className="flex items-center gap-4">
         <ResetButton />
+        <Link href="/" className="text-sm" style={{ color: "var(--color-primary)" }}>
+          What&apos;s real vs. simulated in this prototype →
+        </Link>
       </div>
     </div>
   );

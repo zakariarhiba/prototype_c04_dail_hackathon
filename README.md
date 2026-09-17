@@ -22,11 +22,11 @@ with a human confirming every write:
 
 1. **Receiving** (`/receiving`) — simulate an incoming delivery-note scan.
    The system checks it against open POs and flags **new vs. duplicate**
-   with a stated reason. The receiving clerk confirms/corrects
+   with a stated reason. The parts receiving lead confirms/corrects
    received/damaged/accepted quantities and confirms/corrects the flag.
-   Nothing is written to state until the clerk confirms. One scenario is
+   Nothing is written to state until they confirm. One scenario is
    genuinely ambiguous and the system refuses to guess, handing the decision
-   to the clerk instead.
+   to them instead.
 2. **Invoice reconciliation** (`/invoices`) — simulate an incoming invoice
    for the PO. The system reconciles the invoiced quantity against the
    **sum of accepted quantities** (not received) across every delivery note
@@ -34,6 +34,11 @@ with a human confirming every write:
    mismatch (e.g. "1 unit damaged and rejected on DN-1, not credited on the
    invoice"). A human must approve before a discrepancy notice is generated;
    the notice is simulated and displayed only, never sent.
+3. **Inventory ledger** (`/inventory`) — "received-to-date by part," summed
+   live from accepted receipts (never called "stock on hand" — this
+   prototype has no putaway/pick/consumption events). A parts receiving
+   lead can also "add new stock": a real write of a new order/delivery-
+   note/receipt for a part/quantity typed on the spot.
 
 ## Run instructions
 
@@ -48,11 +53,16 @@ cp .env.local.example .env.local   # DATABASE_URL, already points at the compose
 npm run dev
 ```
 
-Open `http://localhost:3000` — a public landing/about page. "Log in"
-(any name, no real check — see "Real vs. simulated" below) takes you to
-`/dashboard`, and a 3D loading intro plays once per browser session on the
-way in. Use "Reset to seed state" on any page to truncate and reseed the
-database from `context/initial.json` for a repeatable demo start.
+Open `http://localhost:3000` — a public landing/about page. "Log in" is a
+real signed-cookie session against two seeded demo users (see "Real vs.
+simulated" below): `priya_lead` / `@Passw0rd1` (parts receiving lead) and
+`sam_lead` / `@Passw0rd2` (reconciliation lead). A successful login takes
+you to `/dashboard`, and a 3D
+loading intro plays on the way in. Use "Reset to seed state" on any page to
+truncate and reseed the database (including the two demo users) from
+`context/initial.json` for a repeatable demo start — this endpoint is
+deliberately not session-gated, since it's also how a fresh database gets
+its first logins.
 
 ## Data flow
 
@@ -96,6 +106,22 @@ database from `context/initial.json` for a repeatable demo start.
   per-DN evidence lines from real receipt data.
 - The gate that nothing is written to state without an explicit human
   confirmation/approval action (clerk confirm, or invoice-notice approve).
+- Login/session (`app/app/lib/auth.ts`, `session.ts`, `store.ts`): a signed,
+  HTTP-only cookie set on a real credential check against the seeded
+  `users` table (PBKDF2-hashed demo passwords). `POST /api/confirm-receipt`
+  requires `role=clerk`; `POST /api/approve-notice` requires
+  `role=approver`; a mismatch is a real 403, not a hidden button. See
+  `docs/01-system-design.md` §10. Not real *identity* verification — no
+  password policy, recovery flow, rate limiting, or OAuth/SSO; see
+  "Limitations" below.
+- Inventory ledger (`getInventoryLedger` in `store.ts`): `SUM(receipts.accepted)`
+  grouped by part, computed fresh on every read (a query, not a maintained
+  counter), never allowed to drift from the receipts it's built from. See
+  `docs/01-system-design.md` §11 for why it's "received-to-date," not a
+  real stock count.
+- "Add new stock" (`addNewStock` in `store.ts`): a real write of a new
+  order/delivery-note/receipt from a clerk-entered part/quantity — but only
+  to this app's own tables, never to a real supplier or inventory system.
 
 **Simulated / hardcoded, clearly labeled in the UI:**
 - The incoming scan and incoming invoice events themselves — there is no
@@ -112,10 +138,9 @@ database from `context/initial.json` for a repeatable demo start.
   new delivery against it.
 - The discrepancy notice: generated and displayed after human approval,
   never actually sent to a supplier or posted to accounting.
-- The login screen and the 3D loading intro: cosmetic only. The name
-  entered at login is not checked against anything real, it just stands in
-  for the clerk/approver identity used throughout (free-text, no auth
-  system).
+- The 3D loading intro is cosmetic. Login itself is real (see above) — the
+  clerk/approver name shown throughout the app comes from the session, not
+  free text.
 
 ## Limitations
 
@@ -127,11 +152,14 @@ database from `context/initial.json` for a repeatable demo start.
   PO-coverage matching). It has not been validated against real scan data,
   OCR noise, partial barcodes, or suppliers who split differently than this
   dataset assumes.
-- No authentication; anyone with the URL can act as "the clerk" or "the
-  approver".
+- Real session enforcement (§10 above), but only two demo credentials
+  exist, seeded by reset — no self-service signup, password policy,
+  recovery flow, rate limiting, or OAuth/SSO. Anyone with a valid demo
+  password can act as that role.
 - Only one part/PO shape is exercised in depth (`FILTER-X` on `PO-1`, plus
   the demo-added `PO-2`); multi-line delivery notes, multiple parts per DN,
-  and partial invoices are not modeled.
+  and partial invoices are not modeled. The inventory ledger inherits this:
+  it assumes one part per delivery note.
 
 ## Next validation test
 

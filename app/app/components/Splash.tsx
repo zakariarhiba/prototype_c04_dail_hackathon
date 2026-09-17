@@ -79,14 +79,14 @@ export default function Splash({ targetSelector, onDone }: SplashProps) {
     <div className={`splash ${stage === "fade" ? "splash--fade" : ""}`}>
       <div className={`splash-icon ${stage !== "enter" ? "splash-icon--exit" : ""}`}>
         {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size overlay art */}
-        <img src="/dockline-mark.png" width={96} height={96} alt="" />
+        <img src="/trast-mark.png" width={96} height={96} alt="" />
       </div>
       <div className="splash-glow" />
       {stage !== "enter" && (
         <div ref={wordRef} className={`splash-word ${stage === "fly" ? "splash-word--fly" : ""}`}>
           {/* eslint-disable-next-line @next/next/no-img-element -- fixed-size overlay art */}
-          <img src="/dockline-mark.png" width={40} height={40} alt="" />
-          <span>Dockline</span>
+          <img src="/trast-mark.png" width={40} height={40} alt="" />
+          <span>trast</span>
         </div>
       )}
     </div>

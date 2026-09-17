@@ -90,14 +90,26 @@ code starts. See `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
 - [x] `docs/01-system-design.md` §10-§13 written (auth/session, inventory
       ledger, alarm thresholds, KPI definitions), §6 and §8 updated to
       match.
-- [ ] Phase 10: real auth/session (clerk vs approver), fixes the
+- [x] Phase 10: real auth/session (clerk vs approver), fixes the
       localStorage-only login bug and the unlinked clerk/approver name
-      fields.
-- [ ] Phase 11: inventory ledger (derived from receipts) + "add new stock"
-      write.
-- [ ] Phase 12: low-stock/rupture alarms over the ledger.
-- [ ] Phase 13: KPIs (discrepancy rate, damage rate, time-to-reconcile).
-- [ ] Phase 14 (optional/fold-in): relabel simulate-scan/invoice buttons as
+      fields. Built and verified; awaiting Zakaria's review — see
+      `dev-docs/phase-10-real-auth-session.md`.
+- [x] Phase 11: inventory ledger (derived from receipts) + "add new stock"
+      write. Built and verified; awaiting Zakaria's review — see
+      `dev-docs/phase-11-inventory-ledger.md`.
+- [x] Phase 12: client-fit rebrand for hackathon-assigned client trast —
+      indigo palette, "parts receiving lead"/"reconciliation lead"
+      terminology, dashboard inventory link, then (same phase, escalated
+      same day) trast's real logo/name on login+app shell in place of the
+      generated "Dockline" mark, recolored raster art, simplified login
+      credentials (`priya_lead`/`sam_lead`), and dev-facing simulation
+      explanations consolidated onto the About page. Inserted out of the
+      original sequence per a hackathon brief update 2026-09-17; bumped
+      the phases below by one. Built and verified; awaiting Zakaria's
+      review — see `dev-docs/phase-12-trast-client-fit.md`.
+- [ ] Phase 13: low-stock/rupture alarms over the ledger.
+- [ ] Phase 14: KPIs (discrepancy rate, damage rate, time-to-reconcile).
+- [ ] Phase 15 (optional/fold-in): relabel simulate-scan/invoice buttons as
       an explicit QR/barcode-trigger equivalent — cosmetic only.
 
 Explicit future work (not built in this phase, goes into the Wolf handoff's

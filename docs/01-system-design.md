@@ -9,8 +9,13 @@ where we're changing them, and left as open questions where we're not sure.
 
 | Actor | Role | Can do |
 |---|---|---|
-| **Receiving clerk** | Logs what physically arrives at the loading bay | Confirms or corrects received/damaged/accepted quantities and the new-vs-duplicate flag on a scan. Nothing is written to state without this confirmation. |
-| **Invoice approver** | Reconciles an incoming invoice against what was actually received | Reviews the evidence trail for a discrepancy and approves (or does not approve) a discrepancy notice. Nothing is generated/sent without this approval. |
+| **Parts receiving lead** (internal role: `clerk`) | Logs what physically arrives at the loading bay | Confirms or corrects received/damaged/accepted quantities and the new-vs-duplicate flag on a scan. Nothing is written to state without this confirmation. |
+| **Reconciliation lead** (internal role: `approver`) | Reconciles an incoming invoice against what was actually received | Reviews the evidence trail for a discrepancy and approves (or does not approve) a discrepancy notice. Nothing is generated/sent without this approval. |
+
+Display names changed in §14 (hackathon-assigned client "trast") to match
+the brief's own terminology; the `clerk`/`approver` role identifiers in
+code, the DB, and session payloads are unchanged (low-risk rename: it's UI
+copy only, not a schema/auth migration).
 
 v1 let one free-text name stand in for either role, no auth. Carrying that
 forward (see `02-client-interview.md`, open question on identity).
@@ -245,6 +250,20 @@ A new **read-model**, not a new source of truth. `InventoryLedgerLine`:
   delivery note, same as classification/reconciliation. Multi-part DNs stay
   out of scope; don't relax that assumption here while it's still a
   non-goal everywhere else.
+- **`last_movement_at` source:** `receipts` had no timestamp column before
+  this section was built. Phase 11 adds `receipts.created_at timestamptz
+  not null default now()` (backfilled on existing rows by the column
+  default); `last_movement_at` per part is `max(created_at)` across that
+  part's receipts. This is the same "receipts are the one source of truth
+  for accepted quantity" principle above, just extended to also carry when.
+- **"Add new stock" shape:** a clerk-entered `{part, quantity}` creates one
+  new `Order` (`quantity` = entered value), one `DeliveryNote`
+  (`listed_quantity` = entered value, `logged_via = 'clerk_added_stock'`,
+  a new value alongside `'seed'`/`'clerk_confirmed'`), and one `Receipt`
+  with `received = accepted = quantity`, `damaged = 0` — a clerk asserting
+  "this much of this part just arrived and all of it was accepted," skipping
+  the scan/duplicate-check step because there is no PO/DN to check it
+  against yet. Requires `role = clerk`, same gate as `confirm-receipt`.
 
 ## 12. Alarm thresholds (v2)
 
@@ -280,3 +299,103 @@ logic" framing already used for classification (§4) and reconciliation
   without adding a durable field to something that's deliberately not
   durable. Adding that timestamp is listed as future work rather than
   breaking the in-memory-pending design for the sake of one KPI.
+
+## 14. Client fit: trast (hackathon brief update, 2026-09-17)
+
+The hackathon organisers (Yassine, DaiL) confirmed the assigned exercise
+client for C04 as **trast** (trast digital GmbH, a German digitalization
+consultancy — `https://trast.de/`), with the exercise user framed as "the
+parts receiving lead," and added client fit (visual language, wording,
+workflow suitability) as an explicit review criterion. This section records
+what changed and what deliberately didn't.
+
+**What trast.de actually looks like** (fetched and reviewed, not guessed):
+a clean, modern, minimal B2B layout; primary brand color a deep
+indigo/violet-blue (`#4520D1`-ish) over neutral backgrounds; warm, human
+photographic style; a casual-but-credible tone ("digital, simple, joyful").
+Audience is mid-market B2B, automotive-adjacent — a reasonable fit for a
+parts-receiving reconciliation tool.
+
+**Decision: reskin, don't rename.** Dockline stays the product name — it's
+already load-bearing across `docs/`, `dev-docs/`, the DB comments, and the
+UI copy, and a full rename would be churn without changing what the
+prototype demonstrates. What changed instead:
+- `app/app/globals.css`'s `--color-primary` (and the login-screen visual
+  gradient, the one place that hardcoded the old hex instead of using the
+  variable) shifted from the v1 sky-blue (`#1f6feb`/`#4c8dfa`) to an
+  indigo-violet closer to trast's brand color. Everything else in the theme
+  (surfaces, borders, status colors) already read as clean/modern/minimal
+  and didn't need to change.
+- Role display copy: "clerk" → "parts receiving lead" (the brief's own
+  phrase), "approver" → "reconciliation lead" (the brief's "colleagues
+  reconciling delivery and invoice evidence"). See §1's note — this is
+  copy-only, the `clerk`/`approver` identifiers in the DB/session/API are
+  unchanged.
+- Fixed a stray French string (`"Bienvenue..."` on the dashboard greeting)
+  found while touching that copy — leftover from the design system's
+  French-named CSS classes (`carte`, `bouton`, `champ`, ...; those class
+  names are internal and stay, only the user-visible English string was
+  wrong).
+
+**Update, same day: reskin escalated to real branding on visible surfaces.**
+Zakaria asked to go further than the reskin-not-rename decision above: use
+trast's actual logo and name (not just their color palette) on the login
+screen and the app shell (topbar/sidebar brand mark), and to simplify the
+demo login credentials. Changes:
+- Fetched trast.de's real logo (`https://trast.de/wp-content/uploads/2025/10/cropped-trast.png`,
+  the theme's own `custom-logo`, alt text "trast digital GmbH") and its
+  favicon mark, saved locally as `public/trast-logo.png` (full wordmark) and
+  `public/trast-mark.png` (icon only, cropped from the wordmark's
+  transparent left portion — the theme's own favicon export had an opaque
+  gray background, unusable on our dark sidebar). These replace the
+  generated `Logo` component (deleted, `app/app/components/Logo.tsx`) on
+  the login screen, the app topbar/sidebar brand, the landing header, the
+  splash animation, and the post-login/logout transition overlay — every
+  surface that previously showed the "Dockline" wordmark + checkmark mark.
+  `app/icon.png` (browser favicon) was also replaced with the trast mark;
+  `app/icon.svg` was removed as redundant.
+- The raster brand art gap noted below as "not fixed this pass" **was**
+  fixed the same day it was flagged: `landing-hero.png`,
+  `login-illustration.png`, `dockline-mark.png`, `dockline-wordmark.png`,
+  and `app/icon.png` were recolored in place with a Python/Pillow script —
+  every pixel above a saturation threshold hue-shifted from the old brand
+  blue (~hue 210-220°) to the new indigo (~hue 250-260°, matching
+  `#4527d1`), leaving shading/composition untouched. (`dockline-mark.png`/
+  `dockline-wordmark.png` are themselves now superseded by the real
+  `trast-*.png` assets above, but stayed recolored rather than deleted in
+  case they're still referenced.)
+- **The product name "Dockline" itself was not fully renamed** — this
+  section's original "reskin, don't rename" decision still holds for
+  `docs/`, `dev-docs/`, the DB/schema comments, and internal identifiers
+  (the `c04_` prefix, table names, etc.). Only the user-visible brand
+  surfaces listed above now read "trast." This is a deliberate half-step,
+  not an inconsistency: the engineering trail (how this was built, why)
+  stays keyed to the project's working name; what a reviewer or demo
+  audience actually sees now matches the assigned client.
+- **Login credentials simplified.** Added a `username` column to `users`
+  (separate from the existing `name` display column) so the login field can
+  be a short, professional identifier instead of a full display name typed
+  verbatim. New demo logins: `priya_lead` / `@Passw0rd1` (parts receiving
+  lead) and `sam_lead` / `@Passw0rd2` (reconciliation lead) — `name` still
+  holds `"Priya, Parts Receiving Lead"` / `"Sam, Reconciliation Lead"` for
+  display (topbar avatar name, `clerk_name`/`approved_by` on records).
+- **Dev-facing explanations consolidated to the About page.** The
+  demo-credentials note and the long paragraph explanations of "why this
+  button is simulated" / "why this is a read-model" that used to sit on the
+  login screen and on Receiving/Invoices/Inventory/Dashboard were cut down
+  to short inline labels on those working screens (the brief's "clearly
+  labelled simulated event" requirement still holds — every simulate
+  button/write keeps a short visible label) with the full rationale moved
+  to the About page (`/`, already the sidebar's "About trast" target),
+  which now also carries the demo credentials.
+
+**Already satisfied, no change needed:** the brief's required flow ("fast
+receipt capture → linked delivery and invoice evidence → discrepancy
+review") already matches Receiving → Invoice reconciliation → discrepancy
+notice; the required "empty or uncertain state" already exists (the
+`AMBIGUOUS` classification path, §4, and empty-ledger/no-notices states);
+the required "one clearly labelled simulated event updates evidence and the
+next action without another prompt" already matches how
+"Simulate incoming delivery note"/"Simulate incoming invoice" work (§3, §5)
+— one click surfaces the system's classification/evidence and the human
+decision immediately, no second prompt.

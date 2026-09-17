@@ -4,6 +4,11 @@ Synthetic exercise (Dail Octopus, case C04). Not a real client, not connected
 to any real system. See `context/` for the source-of-truth brief, interview
 notes, and test data — that directory is not modified by the prototype.
 
+> **Status:** the app below is a v1 build, kept as a working reference. We
+> are re-designing before extending it further — see `docs/01-system-design.md`
+> for the current design and `TASKS.md` for what's in progress. Read
+> `AGENTS.md` first if you're picking up work here.
+
 ## What this is
 
 The client's pain: at the loading bay they record what arrived; later

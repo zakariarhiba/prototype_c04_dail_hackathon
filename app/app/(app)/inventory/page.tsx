@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import ResetButton from "../../components/ResetButton";
 import { useSession } from "../../lib/useSession";
+import { useLanguage } from "../../lib/i18n";
 import type { InventoryLedgerLine } from "../../lib/types";
 
 export default function InventoryPage() {
   const [ledger, setLedger] = useState<InventoryLedgerLine[] | null>(null);
   const { user } = useSession();
+  const { t } = useLanguage();
   const [part, setPart] = useState("");
   const [quantity, setQuantity] = useState<number>(1);
   const [busy, setBusy] = useState(false);
@@ -47,23 +49,22 @@ export default function InventoryPage() {
   return (
     <div className="space-y-8">
       <div className="entete-page">
-        <h1 className="text-xl font-semibold">Inventory ledger</h1>
+        <h1 className="text-xl font-semibold">{t.inventoryLedgerTitle}</h1>
         <ResetButton />
       </div>
 
       <section className="carte space-y-3">
-        <h2 className="font-medium">Received-to-date by part</h2>
+        <h2 className="font-medium">{t.receivedToDateByPart}</h2>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Not a live stock count — cumulative accepted quantity received to
-          date, per part.
+          {t.receivedToDateNote}
         </p>
         <div className="tableau-conteneur tableau-conteneur--carte">
           <table className="tableau">
             <thead>
               <tr>
-                <th>Part</th>
-                <th>Received-to-date (accepted)</th>
-                <th>Last movement</th>
+                <th>{t.part}</th>
+                <th>{t.colOnHand}</th>
+                <th>{t.colLastMovement}</th>
               </tr>
             </thead>
             <tbody>
@@ -77,7 +78,7 @@ export default function InventoryPage() {
               {ledger?.length === 0 && (
                 <tr>
                   <td colSpan={3} style={{ color: "var(--color-text-muted)" }}>
-                    No receipts logged yet.
+                    {t.noReceiptsYet}
                   </td>
                 </tr>
               )}
@@ -87,17 +88,17 @@ export default function InventoryPage() {
       </section>
 
       <section className="carte space-y-3">
-        <h2 className="font-medium">Add new stock</h2>
+        <h2 className="font-medium">{t.addNewStock}</h2>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Never reaches a real supplier or inventory-of-record system.
+          {t.addStockNote}
         </p>
         <form className="champ-groupe max-w-md" onSubmit={submitAddStock}>
           <div className="champ">
-            <label>Part</label>
+            <label>{t.partLabel}</label>
             <input value={part} onChange={(e) => setPart(e.target.value)} placeholder="e.g. FILTER-X" required />
           </div>
           <div className="champ">
-            <label>Quantity</label>
+            <label>{t.quantityLabel}</label>
             <input
               type="number"
               min={1}
@@ -107,11 +108,11 @@ export default function InventoryPage() {
             />
           </div>
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-            Adding as <strong>{user?.name ?? "…"}</strong>.
+            {t.addingAs} <strong>{user?.name ?? "…"}</strong>.
           </p>
           {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
           <button className="bouton bouton--sombre" type="submit" disabled={busy}>
-            {busy ? "Saving..." : "Add stock"}
+            {busy ? t.saving : t.addStockBtn}
           </button>
         </form>
       </section>

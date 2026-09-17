@@ -1,8 +1,59 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "./lib/useSession";
+
+type WorkflowTag = "Real" | "Simulated" | "Human decision";
+const TAG_STYLE: Record<WorkflowTag, string> = {
+  Real: "info",
+  Simulated: "attention",
+  "Human decision": "succes",
+};
+
+const WORKFLOW_STAGES: { title: string; body: string; tag: WorkflowTag }[] = [
+  {
+    title: "PO created",
+    body: "A purchase order exists, open, nothing delivered against it yet.",
+    tag: "Real",
+  },
+  {
+    title: "Outbound scan",
+    body: "A part's QR is scanned against the open PO to kick off a delivery.",
+    tag: "Simulated",
+  },
+  {
+    title: "System classifies",
+    body: "New vs. duplicate vs. ambiguous, computed fresh from live state — never a scripted answer.",
+    tag: "Real",
+  },
+  {
+    title: "Human confirms receipt",
+    body: "Received, damaged, accepted quantities, plus damage evidence if any. Nothing saves until this click.",
+    tag: "Human decision",
+  },
+  {
+    title: "Ledger + PO status update",
+    body: "Received-to-date and PO status (open → in process → delivered) recompute live from receipts.",
+    tag: "Real",
+  },
+  {
+    title: "Invoice arrives, system reconciles",
+    body: "Sums accepted (not received) quantity across every linked delivery note, flags any gap with evidence.",
+    tag: "Simulated",
+  },
+  {
+    title: "Human approves or dismisses",
+    body: "A discrepancy notice is only ever generated on an explicit human approval.",
+    tag: "Human decision",
+  },
+  {
+    title: "PO closed",
+    body: "Status resolves once the discrepancy is handled or the invoice matches — never a stored flag to drift.",
+    tag: "Real",
+  },
+];
 
 export default function LandingPage() {
   const { user, loading } = useSession();
@@ -68,6 +119,38 @@ export default function LandingPage() {
               human approver signs off before a discrepancy notice is
               generated, and that notice is simulated: displayed, never sent.
             </p>
+          </div>
+        </section>
+
+        <section className="carte space-y-3">
+          <h2 className="font-semibold mb-1">How a PO moves through the system, start to end</h2>
+          <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+            Every box below is a real step in the app you just saw — scroll
+            right to follow one purchase order from creation to close.
+          </p>
+          <div className="workflow__legend">
+            <span className="etiquette-statut etiquette-statut--info">Real</span>
+            <span className="etiquette-statut etiquette-statut--attention">Simulated</span>
+            <span className="etiquette-statut etiquette-statut--succes">Human decision</span>
+          </div>
+          <div className="workflow">
+            <div className="workflow__track">
+              {WORKFLOW_STAGES.map((stage, i) => (
+                <Fragment key={stage.title}>
+                  <div className="workflow__node">
+                    <span className="workflow__step">STEP {i + 1}</span>
+                    <h3>{stage.title}</h3>
+                    <p>{stage.body}</p>
+                    <span className={`etiquette-statut etiquette-statut--${TAG_STYLE[stage.tag]}`}>{stage.tag}</span>
+                  </div>
+                  {i < WORKFLOW_STAGES.length - 1 && (
+                    <span className="workflow__arrow" aria-hidden="true">
+                      &rarr;
+                    </span>
+                  )}
+                </Fragment>
+              ))}
+            </div>
           </div>
         </section>
 

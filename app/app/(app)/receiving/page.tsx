@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ResetButton from "../../components/ResetButton";
 import { useSession } from "../../lib/useSession";
+import { useLanguage } from "../../lib/i18n";
 import type {
   DeliveryNote,
   DiscardedDuplicate,
@@ -32,6 +33,7 @@ export default function ReceivingPage() {
   const [damageText, setDamageText] = useState("");
   const [damageImage, setDamageImage] = useState<string | null>(null);
   const { user } = useSession();
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -107,27 +109,26 @@ export default function ReceivingPage() {
   return (
     <div className="space-y-8">
       <div className="entete-page">
-        <h1 className="text-xl font-semibold">Step 1-3: Receiving</h1>
+        <h1 className="text-xl font-semibold">{t.receivingTitle}</h1>
         <ResetButton />
       </div>
 
       <section className="carte space-y-3">
-        <h2 className="font-medium">Incoming delivery note event</h2>
-        <span className="etiquette-statut etiquette-statut--attention">Simulated — no real scanner</span>
+        <h2 className="font-medium">{t.incomingScanEvent}</h2>
+        <span className="etiquette-statut etiquette-statut--attention">{t.simulatedNoScanner}</span>
         <button className="bouton" onClick={simulateScan} disabled={busy || !!pending}>
-          {busy ? "Working..." : "Simulate incoming delivery note"}
+          {busy ? t.working : t.simulateScanBtn}
         </button>
         {pending && (
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            A scan is pending parts receiving lead confirmation below — resolve it before
-            simulating another.
+            {t.pendingScanNote}
           </p>
         )}
       </section>
 
       {pending && (
         <section className="carte space-y-4">
-          <h2 className="font-medium">System check against open POs</h2>
+          <h2 className="font-medium">{t.systemCheckTitle}</h2>
           <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
             {pending.scenario_label}
           </p>
@@ -137,54 +138,51 @@ export default function ReceivingPage() {
             style={{ background: "var(--color-bg)" }}
           >
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Scan ID</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.scanId}</div>
               <div className="font-mono">{pending.scan_id}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>PO</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.po}</div>
               <div className="font-mono">{pending.order_id}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Part</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.part}</div>
               <div className="font-mono">{pending.part}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Listed qty</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.listedQty}</div>
               <div className="font-mono">{pending.listed_quantity}</div>
             </div>
           </div>
 
           <div className={`message ${CLASSIFICATION_STYLE[pending.system_classification]}`}>
             <div className="font-semibold mb-1">
-              System flag: {pending.system_classification}
-              {pending.system_confidence === "low" && " (low confidence)"}
+              {t.systemFlag}: {pending.system_classification}
+              {pending.system_confidence === "low" && t.lowConfidence}
             </div>
             <div>{pending.system_reasoning}</div>
             {pending.system_classification === "AMBIGUOUS" && (
-              <div className="mt-2 font-medium">
-                The system will not guess here — a human must decide new vs.
-                duplicate below.
-              </div>
+              <div className="mt-2 font-medium">{t.ambiguousHumanNote}</div>
             )}
           </div>
 
           <div className="space-y-3">
-            <h3 className="font-medium text-sm">Parts receiving lead confirmation (required before anything is saved)</h3>
+            <h3 className="font-medium text-sm">{t.leadConfirmationTitle}</h3>
 
             <div className="champ">
-              <label>Confirm or correct the flag:</label>
+              <label>{t.confirmOrCorrect}</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setDecision("NEW")}
                   className={decision === "NEW" ? "bouton" : "bouton bouton--secondaire"}
                 >
-                  New delivery
+                  {t.newDelivery}
                 </button>
                 <button
                   onClick={() => setDecision("DUPLICATE")}
                   className={decision === "DUPLICATE" ? "bouton" : "bouton bouton--secondaire"}
                 >
-                  Duplicate scan (discard)
+                  {t.duplicateScanDiscard}
                 </button>
               </div>
             </div>
@@ -192,7 +190,7 @@ export default function ReceivingPage() {
             {decision === "NEW" && (
               <div className="champ-groupe max-w-md">
                 <div className="champ">
-                  <label>Received</label>
+                  <label>{t.received}</label>
                   <input
                     type="number"
                     value={received}
@@ -200,7 +198,7 @@ export default function ReceivingPage() {
                   />
                 </div>
                 <div className="champ">
-                  <label>Damaged</label>
+                  <label>{t.damaged}</label>
                   <input
                     type="number"
                     value={damaged}
@@ -208,7 +206,7 @@ export default function ReceivingPage() {
                   />
                 </div>
                 <div className="champ">
-                  <label>Accepted</label>
+                  <label>{t.accepted}</label>
                   <input
                     type="number"
                     value={accepted}
@@ -218,18 +216,18 @@ export default function ReceivingPage() {
                 {damaged > 0 && (
                   <>
                     <div className="champ">
-                      <label>Damage description</label>
+                      <label>{t.damageDescription}</label>
                       <input
                         value={damageText}
                         onChange={(e) => setDamageText(e.target.value)}
-                        placeholder="what's damaged, how"
+                        placeholder={t.damagePlaceholder}
                       />
                     </div>
                     <div className="champ">
-                      <label>Damage photo (optional if description given)</label>
+                      <label>{t.damagePhoto}</label>
                       <input type="file" accept="image/*" onChange={onDamageImageChange} />
                       <span className="etiquette-statut etiquette-statut--attention">
-                        Simulated — photo never leaves this prototype
+                        {t.simulatedPhoto}
                       </span>
                     </div>
                   </>
@@ -239,14 +237,12 @@ export default function ReceivingPage() {
 
             {decision === "DUPLICATE" && (
               <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                Confirming this as a duplicate discards the scan — no new
-                delivery note or receipt is created. The discard itself is
-                logged for audit.
+                {t.duplicateConfirmNote}
               </p>
             )}
 
             <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-              Confirming as <strong>{user?.name ?? "…"}</strong>.
+              {t.confirmingAs} <strong>{user?.name ?? "…"}</strong>.
             </p>
 
             {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
@@ -256,28 +252,28 @@ export default function ReceivingPage() {
               onClick={submitConfirmation}
               disabled={busy || !decision}
             >
-              {busy ? "Saving..." : "Confirm"}
+              {busy ? t.saving : t.confirmBtn}
             </button>
           </div>
         </section>
       )}
 
       <section className="carte space-y-4">
-        <h2 className="font-medium">Current state</h2>
+        <h2 className="font-medium">{t.currentState}</h2>
 
         <div>
-          <h3 className="text-sm font-medium mb-2">Delivery notes logged</h3>
+          <h3 className="text-sm font-medium mb-2">{t.deliveryNotesLogged}</h3>
           <div className="tableau-conteneur tableau-conteneur--carte">
             <table className="tableau">
               <thead>
                 <tr>
-                  <th>DN</th>
-                  <th>PO</th>
-                  <th>Part</th>
-                  <th>Listed qty</th>
-                  <th>Received / Damaged / Accepted</th>
-                  <th>Damage evidence</th>
-                  <th>Logged via</th>
+                  <th>{t.colDn}</th>
+                  <th>{t.colPo}</th>
+                  <th>{t.colPart}</th>
+                  <th>{t.colListedQty}</th>
+                  <th>{t.colRda}</th>
+                  <th>{t.colDamageEvidence}</th>
+                  <th>{t.colLoggedVia}</th>
                 </tr>
               </thead>
               <tbody>
@@ -289,9 +285,9 @@ export default function ReceivingPage() {
                       <td className="font-mono">{dn.order_id}</td>
                       <td>{dn.part}</td>
                       <td>{dn.listed_quantity}</td>
-                      <td>{r ? `${r.received} / ${r.damaged} / ${r.accepted}` : "(no receipt)"}</td>
+                      <td>{r ? `${r.received} / ${r.damaged} / ${r.accepted}` : t.noReceipt}</td>
                       <td style={{ color: "var(--color-text-muted)" }}>
-                        {r?.damage_evidence_text ?? (r?.damage_evidence_image ? "(photo only)" : "-")}
+                        {r?.damage_evidence_text ?? (r?.damage_evidence_image ? t.photoOnly : "-")}
                         {r?.damage_evidence_image && (
                           // eslint-disable-next-line @next/next/no-img-element -- stored data URL, not a static asset
                           <img
@@ -314,15 +310,15 @@ export default function ReceivingPage() {
 
         {state && state.discardedDuplicates.length > 0 && (
           <div>
-            <h3 className="text-sm font-medium mb-2">Discarded duplicate scans (audit log)</h3>
+            <h3 className="text-sm font-medium mb-2">{t.discardedDuplicatesTitle}</h3>
             <div className="tableau-conteneur tableau-conteneur--carte">
               <table className="tableau">
                 <thead>
                   <tr>
-                    <th>Scan</th>
-                    <th>PO / Part</th>
-                    <th>Matched DN</th>
-                    <th>Confirmed at</th>
+                    <th>{t.colScan}</th>
+                    <th>{t.colPoPart}</th>
+                    <th>{t.colMatchedDn}</th>
+                    <th>{t.colConfirmedAt}</th>
                   </tr>
                 </thead>
                 <tbody>

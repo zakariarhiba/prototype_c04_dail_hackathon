@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import LoadingIntro from "./components/LoadingIntro";
 import RouteProgressBar from "./components/RouteProgressBar";
+import { LanguageProvider } from "./lib/i18n";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -23,9 +24,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
       <body>
-        <LoadingIntro />
-        <RouteProgressBar />
-        {children}
+        <LanguageProvider>
+          <LoadingIntro />
+          <RouteProgressBar />
+          {children}
+        </LanguageProvider>
       </body>
     </html>
   );

@@ -8,12 +8,14 @@ import TransitionOverlay from "../components/TransitionOverlay";
 import PageTransition from "../components/PageTransition";
 import ThemeToggle from "../components/ThemeToggle";
 import { useSession } from "../lib/useSession";
-import { BellIcon, BoxIcon, ChatIcon, HomeIcon, InboxIcon, InfoIcon, LogOutIcon, QrIcon, ReceiptIcon, RouteIcon } from "../components/icons";
+import { useLanguage } from "../lib/i18n";
+import { BellIcon, BoxIcon, HomeIcon, InboxIcon, InfoIcon, LogOutIcon, QrIcon, ReceiptIcon, RouteIcon } from "../components/icons";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, loading } = useSession();
   const [loggingOut, setLoggingOut] = useState(false);
+  const { locale, t, toggle: toggleLanguage } = useLanguage();
 
   useEffect(() => {
     if (!loading && !user) {
@@ -63,38 +65,38 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <Image src="/trast-mark.png" alt="" width={34} height={34} />
             Trast Dockline
           </span>
-          <span>Case C04 &middot; delivery vs. invoice reconciliation &middot; SYNTHETIC DATA</span>
+          <span>{t.brandTagline}</span>
         </Link>
         <nav className="app-nav">
           <Link href="/dashboard">
             <HomeIcon className="app-nav__icone" />
-            Home
+            {t.navHome}
           </Link>
           <Link href="/receiving">
             <InboxIcon className="app-nav__icone" />
-            Receiving
+            {t.navReceiving}
           </Link>
           <Link href="/invoices">
             <ReceiptIcon className="app-nav__icone" />
-            Invoice reconciliation
+            {t.navInvoices}
           </Link>
           <Link href="/inventory">
             <BoxIcon className="app-nav__icone" />
-            Inventory
+            {t.navInventory}
           </Link>
           <Link href="/parts">
             <QrIcon className="app-nav__icone" />
-            Parts &amp; QR
+            {t.navParts}
           </Link>
           <Link href="/po">
             <RouteIcon className="app-nav__icone" />
-            PO tracker
+            {t.navPo}
           </Link>
         </nav>
         <div className="app-sidebar__footer">
           <Link href="/" className="app-sidebar__aide">
             <InfoIcon className="app-nav__icone" />
-            About trast
+            {t.aboutTrast}
           </Link>
         </div>
       </aside>
@@ -105,8 +107,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <button className="app-userbar__icon" type="button" title="Notifications (not wired up)">
             <BellIcon />
           </button>
-          <button className="app-userbar__icon" type="button" title="Chat (not wired up)">
-            <ChatIcon />
+          <button
+            className="app-userbar__icon app-userbar__icon--lang"
+            type="button"
+            onClick={toggleLanguage}
+            title={t.languageToggle}
+            aria-label={t.languageToggle}
+          >
+            {locale === "en" ? "EN" : "DE"}
           </button>
           <div className="app-userbar__divider" />
           <span className="app-userbar__avatar">{name?.[0]?.toUpperCase() ?? "?"}</span>
@@ -116,7 +124,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             type="button"
             onClick={logout}
             disabled={loggingOut}
-            title="Log out"
+            title={t.logOut}
           >
             <LogOutIcon />
           </button>

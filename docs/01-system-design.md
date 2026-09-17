@@ -487,3 +487,91 @@ Phase 6), not covered by this section.
 - Unchanged from §4/§5: classification and reconciliation logic — this
   section adds a step before classification, it doesn't alter the
   heuristic or the evidence-line logic themselves.
+
+## 16. Userbar cleanup + EN/DE language toggle
+
+Client fit (§14): trast is a German company (trast.de), so the app should
+let a reviewer switch the shell into German rather than only gesturing at
+it via branding. Scope, kept small for the demo:
+
+- Userbar icon row keeps the theme toggle and the notifications bell
+  as-is (bell stays `title="Notifications (not wired up)"`, unchanged);
+  only the "chat/messages" icon slot is replaced by an EN/DE language
+  toggle.
+- Language is a client-only `LanguageProvider` (React context), persisted
+  in `localStorage` like the existing theme toggle (§10 pattern), default
+  `en`.
+- Coverage extended (revision after initial pass): every static UI string
+  on every page is translated — shell chrome (sidebar nav, brand tagline,
+  "About trast", logout tooltip) plus all page body content: headings,
+  paragraphs, form labels/placeholders, buttons, table column headers,
+  and PO status badge text, across dashboard, receiving, invoices,
+  inventory, parts & QR, PO tracker, and PO detail.
+- Deliberately NOT translated (data, not UI copy): part/SKU/PO/scan/
+  invoice/receipt identifiers, quantities, dates, user names, and
+  system-generated free-text (`scenario_label`, `system_reasoning`,
+  evidence notes) — this is live application data assembled server-side
+  from seed/state, not static chrome; translating it would mean the UI
+  fabricating a translation of data it didn't author. If the client
+  needs those localized too, that's a backend content change, not a
+  frontend i18n one — flagged as a follow-up, not done here.
+- A custom 404 page (`app/not-found.tsx`) was added alongside this
+  work: on an unknown route it shows a short message and a "Back to
+  dashboard" button (translated via the same `LanguageProvider`),
+  instead of Next.js's default 404.
+
+## 17. Landing/about page: visual PO-lifecycle workflow
+
+The landing page (`app/page.tsx`, the "About this prototype" section) is
+what's used to present the prototype to trast, so it should let someone
+explain the workflow by pointing at a picture instead of narrating a
+list. Adds one new section: a horizontal, n8n-style node diagram of the
+PO lifecycle end to end, built with plain HTML/CSS (flex row of cards +
+arrow connectors between them), no new libraries.
+
+**Stages shown** (condensed from §3's state machine, §4's classification,
+§5's reconciliation, and §15's PO lifecycle — this section doesn't change
+any of that logic, only visualizes it):
+
+1. PO created (`open`)
+2. Outbound scan — simulated (Part QR read against the PO, §15's
+   sender-scan step)
+3. System classifies — New / Duplicate / Ambiguous, computed live (§4)
+4. Human confirms receipt — received/damaged/accepted + evidence,
+   required before anything is saved (§3, §6)
+5. Ledger + PO status recompute — derived live from receipts, never a
+   stored flag (§11, §15)
+6. Invoice arrives (simulated) → system reconciles accepted vs. invoiced
+   (§5)
+7. Human approves or dismisses — a discrepancy notice is only ever
+   generated on explicit approval (§6)
+8. PO resolves (`closed`)
+
+Each node is tagged **Real**, **Simulated**, or **Human decision** (reusing
+the existing `etiquette-statut` badge styles: info/attention/succes) so
+the real-vs-simulated honesty from §6 carries into the diagram itself,
+not just the prose paragraph below it. Purely presentational — no new
+state, no new API routes.
+
+## 18. Presentation cleanup: page titles + seeded Parts
+
+Two small fixes after a dry run of the presentation script:
+
+- **Confusing page titles.** Receiving and Invoice reconciliation were
+  titled "Step 1-3: Receiving" and "Step 4-6: Invoice reconciliation" —
+  a leftover numbering scheme with nothing else in the app to anchor it
+  to, so out of context the numbers just look wrong. Retitled to plain
+  "Receiving" / "Invoice reconciliation" (and their German equivalents).
+- **Empty Parts & QR page on reset.** `initial.json` has no Part
+  (inventory-master) records — Part is a v3 addition (§15) that
+  postdates the seed file, so a fresh reset left that page and its QR
+  codes genuinely empty, with nothing to present without typing a part
+  in live. Added a `DEMO_ADDED_PARTS` seed (same pattern and reasoning
+  as `DEMO_ADDED_ORDER` in §1's seed note): three Part records —
+  FILTER-X and BRAKE-PAD-Y (matching the two seeded orders' parts) plus
+  a standalone WIPER-Z — inserted by `resetState()` alongside the
+  existing seed, each with a generated QR. These are Part *master*
+  records only — no delivery notes or receipts are created for them, so
+  they don't touch the receiving/inventory demo narrative (PO-2 still
+  starts with zero delivery notes for the "ordinary new delivery"
+  scenario in §4).

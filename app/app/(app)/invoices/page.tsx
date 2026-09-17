@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ResetButton from "../../components/ResetButton";
 import { useSession } from "../../lib/useSession";
+import { useLanguage } from "../../lib/i18n";
 import type { DiscrepancyNotice, PendingInvoiceReview } from "../../lib/types";
 
 type StateResponse = {
@@ -13,6 +14,7 @@ type StateResponse = {
 export default function InvoicesPage() {
   const [state, setState] = useState<StateResponse | null>(null);
   const { user } = useSession();
+  const { t } = useLanguage();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,27 +68,26 @@ export default function InvoicesPage() {
   return (
     <div className="space-y-8">
       <div className="entete-page">
-        <h1 className="text-xl font-semibold">Step 4-6: Invoice reconciliation</h1>
+        <h1 className="text-xl font-semibold">{t.invoicesTitle}</h1>
         <ResetButton />
       </div>
 
       <section className="carte space-y-3">
-        <h2 className="font-medium">Incoming invoice event</h2>
-        <span className="etiquette-statut etiquette-statut--attention">Simulated — no real EDI/accounting feed</span>
+        <h2 className="font-medium">{t.incomingInvoiceEvent}</h2>
+        <span className="etiquette-statut etiquette-statut--attention">{t.simulatedNoEdi}</span>
         <button className="bouton" onClick={simulateInvoice} disabled={busy || !!pending}>
-          {busy ? "Working..." : "Simulate incoming invoice"}
+          {busy ? t.working : t.simulateInvoiceBtn}
         </button>
         {pending && (
           <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
-            An invoice review is pending below — resolve it before
-            simulating another.
+            {t.pendingInvoiceNote}
           </p>
         )}
       </section>
 
       {pending && (
         <section className="carte space-y-4">
-          <h2 className="font-medium">Reconciliation</h2>
+          <h2 className="font-medium">{t.reconciliationTitle}</h2>
           <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
             {pending.scenario_label}
           </p>
@@ -96,21 +97,21 @@ export default function InvoicesPage() {
             style={{ background: "var(--color-bg)" }}
           >
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Invoice</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.invoice}</div>
               <div className="font-mono">{pending.invoice_id}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>PO / Part</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.poPart}</div>
               <div className="font-mono">
                 {pending.order_id} / {pending.part}
               </div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Invoiced qty</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.invoicedQty}</div>
               <div className="font-mono">{pending.invoiced_quantity}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Sum of accepted</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.sumAccepted}</div>
               <div className="font-mono">{pending.accepted_total}</div>
             </div>
           </div>
@@ -118,23 +119,23 @@ export default function InvoicesPage() {
           <div className={`message ${pending.clean ? "message--succes" : "message--erreur"}`}>
             <div className="font-semibold mb-1">
               {pending.clean
-                ? "Reconciles cleanly — no discrepancy"
-                : `Discrepancy: ${pending.discrepancy > 0 ? "invoice overcharges" : "invoice undercharges"} by ${Math.abs(pending.discrepancy)} unit(s)`}
+                ? t.reconcilesClean
+                : `${pending.discrepancy > 0 ? t.discrepancyOver : t.discrepancyUnder} ${Math.abs(pending.discrepancy)} unit(s)`}
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Evidence, why (by delivery note / receipt)</h3>
+            <h3 className="text-sm font-medium mb-2">{t.evidenceTitle}</h3>
             <div className="tableau-conteneur tableau-conteneur--carte">
               <table className="tableau">
                 <thead>
                   <tr>
-                    <th>DN</th>
-                    <th>Receipt</th>
-                    <th>Received</th>
-                    <th>Damaged</th>
-                    <th>Accepted</th>
-                    <th>Note</th>
+                    <th>{t.colDn}</th>
+                    <th>{t.colReceipt}</th>
+                    <th>{t.colReceived}</th>
+                    <th>{t.colDamaged}</th>
+                    <th>{t.colAccepted}</th>
+                    <th>{t.colNote}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -153,14 +154,13 @@ export default function InvoicesPage() {
             </div>
             {!pending.clean && (
               <p className="text-sm mt-2">
-                Invoice bills {pending.invoiced_quantity}; delivery notes
-                above accepted {pending.accepted_total} in total. Gap of{" "}
+                {t.gapExplain1} {pending.invoiced_quantity}{t.gapExplain2} {pending.accepted_total}.{" "}
                 {Math.abs(pending.discrepancy)} unit(s) ={" "}
                 {pending.evidence
                   .filter((e) => e.damaged > 0)
-                  .map((e) => `${e.damaged} damaged/rejected on ${e.delivery_note}`)
-                  .join("; ") || "unexplained by damage, see evidence rows above"}
-                , not credited on the invoice.
+                  .map((e) => `${e.damaged} ${t.damagedRejectedOn} ${e.delivery_note}`)
+                  .join("; ") || t.unexplainedByDamage}
+                .
               </p>
             )}
           </div>
@@ -171,19 +171,19 @@ export default function InvoicesPage() {
             {!pending.clean && (
               <>
                 <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                  Approving as <strong>{user?.name ?? "…"}</strong>.
+                  {t.approvingAs} <strong>{user?.name ?? "…"}</strong>.
                 </p>
                 <button
                   className="bouton bouton--sombre"
                   onClick={approve}
                   disabled={busy}
                 >
-                  {busy ? "Working..." : "Approve discrepancy notice (simulated)"}
+                  {busy ? t.working : t.approveNoticeBtn}
                 </button>
               </>
             )}
             <button className="bouton bouton--secondaire" onClick={dismiss} disabled={busy}>
-              {pending.clean ? "Acknowledge, no notice needed" : "Dismiss without action"}
+              {pending.clean ? t.acknowledgeNoNotice : t.dismissWithoutAction}
             </button>
           </div>
         </section>
@@ -191,21 +191,20 @@ export default function InvoicesPage() {
 
       {state && state.notices.length > 0 && (
         <section className="carte space-y-3">
-          <h2 className="font-medium">Generated discrepancy notices</h2>
+          <h2 className="font-medium">{t.generatedNoticesTitle}</h2>
           <p className="message message--attention text-xs inline-block">
-            SIMULATED — displayed only. Nothing is actually sent to a
-            supplier or posted to accounting.
+            {t.simulatedNoticeWarning}
           </p>
           {state.notices.map((n) => (
             <div key={n.id} className="carte text-sm space-y-1">
               <div className="font-mono font-medium">{n.id}</div>
               <div>
-                Invoice {n.invoice_id} for {n.order_id}/{n.part}: billed{" "}
-                {n.invoiced_quantity}, accepted total {n.accepted_total},
-                discrepancy {n.discrepancy}.
+                {t.invoiceFor} {n.invoice_id} {t.billed} {n.order_id}/{n.part}: {t.acceptedTotal}{" "}
+                {n.invoiced_quantity}, {t.discrepancyLabel} {n.accepted_total},{" "}
+                {t.discrepancyLabelSuffix} {n.discrepancy}.
               </div>
               <div style={{ color: "var(--color-text-muted)" }}>
-                Approved by {n.approved_by} at {new Date(n.approved_at).toLocaleString()}
+                {t.approvedBy} {n.approved_by} {new Date(n.approved_at).toLocaleString()}
               </div>
             </div>
           ))}

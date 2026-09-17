@@ -75,11 +75,16 @@ Not started.
 
 ## Phase 4 — Presentation
 
-Not started. Runs in parallel with Phase 5, not strictly after it — see
+Runs in parallel with Phase 5, not strictly after it — see
 `dev-docs/phase-09-design-v2-auth-inventory-kpis.md` for the full
 parallel-track plan.
 
-- [ ] Write and time the 3-minute script (`docs/06-presentation-script.md`).
+- [x] Write the walkthrough script (`docs/06-presentation-script.md`):
+      baby-step demo (exact pages/clicks against seeded data, no live
+      typing needed for the core flow) plus a "what's next" roadmap
+      section to talk to.
+- [ ] Time the live walkthrough against the actual demo (not just read
+      the script) and trim Part A if it runs long.
 - [ ] Dry run once against the actual demo, not just the script.
 
 ## Phase 5 — v2: real auth, inventory ledger, alarms, KPIs

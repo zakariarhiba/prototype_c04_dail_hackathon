@@ -50,6 +50,21 @@ function loadSeed(): SeedData {
 // verbatim.
 const DEMO_ADDED_ORDER: Order = { id: "PO-2", part: "BRAKE-PAD-Y", quantity: 5 };
 
+// Demo-only addition, same reasoning as DEMO_ADDED_ORDER above: initial.json
+// has no Part (inventory-master) records at all, since Part is a v3 addition
+// (§15) that postdates the original seed. Left genuinely empty, the Parts &
+// QR page has nothing to show on a fresh reset and nothing to present
+// without typing live. These three seed the page with QR-bearing parts
+// (two matching the two seeded orders' parts, one standalone) so the page
+// has content immediately; they do not add any delivery notes or receipts,
+// so they don't touch the receiving/inventory demo narrative (§4 scenario 0
+// still needs PO-2 to start with zero delivery notes).
+const DEMO_ADDED_PARTS: { sku: string; name: string; description: string; quantity_on_hand: number }[] = [
+  { sku: "FILTER-X", name: "Oil filter, type X", description: "Standard spin-on oil filter.", quantity_on_hand: 20 },
+  { sku: "BRAKE-PAD-Y", name: "Brake pad set, type Y", description: "Front axle pad set.", quantity_on_hand: 15 },
+  { sku: "WIPER-Z", name: "Wiper blade, type Z", description: "22-inch all-season blade.", quantity_on_hand: 30 },
+];
+
 // v2 demo users (docs/01-system-design.md §10): exactly the two roles §1
 // defines, seeded alongside orders/DNs so the repeatable-start-state
 // handover requirement still holds after login becomes real. Demo
@@ -175,6 +190,20 @@ export async function resetState(): Promise<void> {
     // "add new stock" (§11) to never collide.
     await pool.query("insert into counters (key, value) values ('PO', $1)", [
       seed.orders.length + 1,
+    ]);
+    for (let i = 0; i < DEMO_ADDED_PARTS.length; i++) {
+      const p = DEMO_ADDED_PARTS[i];
+      const id = `PART-${i + 1}`;
+      const qrPayload = JSON.stringify({ type: "c04_part", id, sku: p.sku });
+      await pool.query(
+        "insert into parts (id, sku, name, description, quantity_on_hand, qr_payload) values ($1, $2, $3, $4, $5, $6)",
+        [id, p.sku, p.name, p.description, p.quantity_on_hand, qrPayload]
+      );
+    }
+    // Same reasoning as DN/RC/PO above: fixed PART-1..PART-N ids from the
+    // seed, so nextId('PART') for a live "Add new part" must start past them.
+    await pool.query("insert into counters (key, value) values ('PART', $1)", [
+      DEMO_ADDED_PARTS.length,
     ]);
     await pool.query("commit");
   } catch (err) {

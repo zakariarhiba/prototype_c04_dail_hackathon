@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ResetButton from "../../components/ResetButton";
+import { useLanguage } from "../../lib/i18n";
 import type { PoTimeline } from "../../lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -14,6 +15,14 @@ const STATUS_STYLE: Record<string, string> = {
 
 export default function PoTrackerPage() {
   const [timelines, setTimelines] = useState<PoTimeline[] | null>(null);
+  const { t } = useLanguage();
+
+  const STATUS_LABEL: Record<string, string> = {
+    open: t.statusOpen,
+    in_process: t.statusInProcess,
+    delivered: t.statusDelivered,
+    closed: t.statusClosed,
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -27,48 +36,46 @@ export default function PoTrackerPage() {
   return (
     <div className="space-y-8">
       <div className="entete-page">
-        <h1 className="text-xl font-semibold">PO tracker</h1>
+        <h1 className="text-xl font-semibold">{t.poTrackerTitle}</h1>
         <ResetButton />
       </div>
 
       <section className="carte space-y-3">
-        <h2 className="font-medium">Every PO, from creation until fully resolved</h2>
+        <h2 className="font-medium">{t.everyPoTitle}</h2>
         <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-          Status computed live from delivery notes, receipts and approved
-          discrepancy notices — never a separate flag to keep in sync. A PO
-          stays open/in-process indefinitely if never fully resolved.
+          {t.poStatusNote}
         </p>
         <div className="tableau-conteneur tableau-conteneur--carte">
           <table className="tableau">
             <thead>
               <tr>
-                <th>PO</th>
-                <th>Part</th>
-                <th>Ordered</th>
-                <th>Accepted so far</th>
-                <th>Status</th>
+                <th>{t.po}</th>
+                <th>{t.part}</th>
+                <th>{t.colOrdered}</th>
+                <th>{t.colAcceptedSoFar}</th>
+                <th>{t.colStatus}</th>
               </tr>
             </thead>
             <tbody>
-              {timelines?.map((t) => (
-                <tr key={t.order.id}>
+              {timelines?.map((tl) => (
+                <tr key={tl.order.id}>
                   <td className="font-mono">
-                    <Link href={`/po/${t.order.id}`} className="lien-secondaire">
-                      {t.order.id}
+                    <Link href={`/po/${tl.order.id}`} className="lien-secondaire">
+                      {tl.order.id}
                     </Link>
                   </td>
-                  <td>{t.order.part}</td>
-                  <td>{t.order.quantity}</td>
-                  <td>{t.accepted_total}</td>
+                  <td>{tl.order.part}</td>
+                  <td>{tl.order.quantity}</td>
+                  <td>{tl.accepted_total}</td>
                   <td>
-                    <span className={`etiquette-statut ${STATUS_STYLE[t.status]}`}>{t.status}</span>
+                    <span className={`etiquette-statut ${STATUS_STYLE[tl.status]}`}>{STATUS_LABEL[tl.status] ?? tl.status}</span>
                   </td>
                 </tr>
               ))}
               {timelines?.length === 0 && (
                 <tr>
                   <td colSpan={5} style={{ color: "var(--color-text-muted)" }}>
-                    No POs yet.
+                    {t.noPosYet}
                   </td>
                 </tr>
               )}

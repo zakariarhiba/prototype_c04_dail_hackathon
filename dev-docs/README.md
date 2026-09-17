@@ -34,6 +34,10 @@ phase doc, stop, wait for an explicit yes before starting the next one.
 | 11 | [phase-11-inventory-ledger.md](phase-11-inventory-ledger.md) | Inventory ledger read-model (SUM(receipts.accepted) by part) + clerk-only "add new stock" write | Validated 2026-09-17 |
 | 12 | [phase-12-trast-client-fit.md](phase-12-trast-client-fit.md) | Client-fit rebrand for hackathon-assigned client trast: indigo palette and terminology, then trast's real logo/name on login+app shell, recolored art, simplified login credentials, simulation copy consolidated to About page | Validated 2026-09-17 |
 | 13 | [phase-13-v3-lifecycle-rebuild.md](phase-13-v3-lifecycle-rebuild.md) | Part/inventory-master entity + QR generation, PO lifecycle (computed status) + timeline page, sender-scan step reusing existing classify logic, required damage evidence on receipts, §10 role gating shelved for single-account demo | Awaiting review |
+| 14 | [phase-14-navbar-language-toggle.md](phase-14-navbar-language-toggle.md) | EN/DE language toggle replacing the chat/messages userbar icon, extended to cover all page/table static text, plus a custom 404 page | Awaiting review |
+| 15 | [phase-15-landing-workflow-diagram.md](phase-15-landing-workflow-diagram.md) | Landing/about page: horizontal n8n-style PO-lifecycle workflow diagram (8 stages, Real/Simulated/Human-decision tagged) for presenting the prototype | Awaiting review |
+| 16 | [phase-16-login-prefill.md](phase-16-login-prefill.md) | Login form pre-filled with priya_lead demo credentials + "pre-filled" note, so the presenter never types/copy-pastes them live | Awaiting review |
+| 17 | [phase-17-presentation-cleanup.md](phase-17-presentation-cleanup.md) | Retitled confusing "Step 1-3/4-6" page headings; seeded 3 Part/QR records on reset so Parts & QR isn't empty for the demo | Awaiting review |
 
 Phases 1-4 are written retroactively (the workflow below didn't exist yet
 when they were built) — flagged here so review can catch up before any new

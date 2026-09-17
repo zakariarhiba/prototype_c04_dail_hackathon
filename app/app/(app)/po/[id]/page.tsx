@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import ResetButton from "../../../components/ResetButton";
+import { useLanguage } from "../../../lib/i18n";
 import type { PoTimeline } from "../../../lib/types";
 
 const STATUS_STYLE: Record<string, string> = {
@@ -17,6 +18,14 @@ export default function PoDetailPage() {
   const params = useParams<{ id: string }>();
   const [timeline, setTimeline] = useState<PoTimeline | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useLanguage();
+
+  const STATUS_LABEL: Record<string, string> = {
+    open: t.statusOpen,
+    in_process: t.statusInProcess,
+    delivered: t.statusDelivered,
+    closed: t.statusClosed,
+  };
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load on mount
@@ -32,7 +41,7 @@ export default function PoDetailPage() {
     <div className="space-y-8">
       <div className="entete-page">
         <h1 className="text-xl font-semibold">
-          PO {params.id} <Link href="/po" className="lien-secondaire text-sm">&larr; all POs</Link>
+          {t.po} {params.id} <Link href="/po" className="lien-secondaire text-sm">&larr; {t.allPos}</Link>
         </h1>
         <ResetButton />
       </div>
@@ -46,25 +55,25 @@ export default function PoDetailPage() {
             style={{ background: "var(--color-bg)" }}
           >
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Part</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.part}</div>
               <div className="font-mono">{timeline.order.part}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Ordered</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.colOrdered}</div>
               <div className="font-mono">{timeline.order.quantity}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Accepted so far</div>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.colAcceptedSoFar}</div>
               <div className="font-mono">{timeline.accepted_total}</div>
             </div>
             <div>
-              <div style={{ color: "var(--color-text-muted)" }}>Status</div>
-              <span className={`etiquette-statut ${STATUS_STYLE[timeline.status]}`}>{timeline.status}</span>
+              <div style={{ color: "var(--color-text-muted)" }}>{t.colStatus}</div>
+              <span className={`etiquette-statut ${STATUS_STYLE[timeline.status]}`}>{STATUS_LABEL[timeline.status] ?? timeline.status}</span>
             </div>
           </div>
 
           <div>
-            <h3 className="text-sm font-medium mb-2">Timeline</h3>
+            <h3 className="text-sm font-medium mb-2">{t.timelineTitle}</h3>
             <ol className="space-y-2">
               {timeline.events.map((e, i) => (
                 <li key={i} className="text-sm border-l-2 pl-3" style={{ borderColor: "var(--color-border)" }}>
@@ -74,7 +83,7 @@ export default function PoDetailPage() {
               ))}
               {timeline.events.length === 0 && (
                 <li className="text-sm" style={{ color: "var(--color-text-muted)" }}>
-                  Nothing logged yet — still open.
+                  {t.nothingLoggedYet}
                 </li>
               )}
             </ol>

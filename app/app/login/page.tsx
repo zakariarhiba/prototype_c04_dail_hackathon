@@ -8,8 +8,8 @@ import { EyeIcon, EyeOffIcon } from "../components/icons";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("priya_lead");
+  const [password, setPassword] = useState("@Passw0rd1");
   const [showPassword, setShowPassword] = useState(false);
   const [signingIn, setSigningIn] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +51,9 @@ export default function LoginPage() {
         <form className="login-card" onSubmit={handleSubmit}>
           <Image src="/trast-logo.png" alt="trast digital GmbH" width={140} height={46} priority />
           <p className="login-card__intro">Log in to access your workspace.</p>
+          <span className="etiquette-statut etiquette-statut--info">
+            Demo credentials pre-filled — just click Log in
+          </span>
 
           <div className="champ">
             <label htmlFor="login-username">Username</label>

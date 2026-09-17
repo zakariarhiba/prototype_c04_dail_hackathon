@@ -272,6 +272,11 @@ function classifyScan(
 export async function simulateIncomingScan(): Promise<PendingScan> {
   await ensureSchema();
   const mem = pendingMemory();
+  if (mem.pendingScan) {
+    throw new Error(
+      "A scan is already pending clerk confirmation. Confirm or resolve it before simulating another."
+    );
+  }
   const scenario = SCAN_SCENARIOS[mem.scanScenarioIndex % SCAN_SCENARIOS.length];
   mem.scanScenarioIndex += 1;
 
@@ -406,6 +411,11 @@ const INVOICE_SCENARIOS: InvoiceScenario[] = [
 export async function simulateIncomingInvoice(): Promise<PendingInvoiceReview> {
   await ensureSchema();
   const mem = pendingMemory();
+  if (mem.pendingInvoice) {
+    throw new Error(
+      "An invoice review is already pending approval. Resolve it before simulating another."
+    );
+  }
   const scenario = INVOICE_SCENARIOS[mem.invoiceScenarioIndex % INVOICE_SCENARIOS.length];
   mem.invoiceScenarioIndex += 1;
 

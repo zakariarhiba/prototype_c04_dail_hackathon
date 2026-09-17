@@ -29,7 +29,9 @@ export default function InvoicesPage() {
   async function simulateInvoice() {
     setBusy(true);
     setError(null);
-    await fetch("/api/simulate-invoice", { method: "POST" });
+    const res = await fetch("/api/simulate-invoice", { method: "POST" });
+    const data = await res.json();
+    if (!data.ok) setError(data.error);
     await refresh();
     setBusy(false);
   }

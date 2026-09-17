@@ -26,6 +26,9 @@ phase doc, stop, wait for an explicit yes before starting the next one.
 | 3 | [phase-03-langgraph-gemini-narrative-service.md](phase-03-langgraph-gemini-narrative-service.md) | Python/LangGraph/Gemini narrative microservice — built, then paused | Awaiting review |
 | 4 | [phase-04-postgres-persistence.md](phase-04-postgres-persistence.md) | Replaced in-memory state with Postgres (docker-compose + schema + store.ts rewrite) | Awaiting review |
 | 5 | [phase-05-branding-icons-landing-page.md](phase-05-branding-icons-landing-page.md) | Named the app "Dockline", real local icons + favicon/logo, landing/about page, transitions | Awaiting review |
+| 6 | [phase-06-pending-clobber-guard.md](phase-06-pending-clobber-guard.md) | Fixed silent pending-scan/invoice clobbering, black favicon, dev-mode indicator badge | Awaiting review |
+| 7 | [phase-07-brand-assets.md](phase-07-brand-assets.md) | Generated Dockline logo/hero/login art and evidence schemas wired in, transparent-icon fix, Makefile | Awaiting review |
+| 8 | [phase-08-immersive-transitions.md](phase-08-immersive-transitions.md) | Splash entry animation, login/logout transition overlays, route progress bar | Awaiting review |
 
 Phases 1-4 are written retroactively (the workflow below didn't exist yet
 when they were built) — flagged here so review can catch up before any new

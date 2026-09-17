@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import LoadingIntro from "../components/LoadingIntro";
+import TransitionOverlay from "../components/TransitionOverlay";
 import PageTransition from "../components/PageTransition";
 import ThemeToggle from "../components/ThemeToggle";
 import { Logo } from "../components/Logo";
@@ -13,6 +13,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [name, setName] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     const stored = localStorage.getItem("c04_user_name");
@@ -25,6 +26,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [router]);
 
   function logout() {
+    setLoggingOut(true);
+  }
+
+  function completeLogout() {
     localStorage.removeItem("c04_user_name");
     router.replace("/login");
   }
@@ -33,11 +38,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      <LoadingIntro />
+      <TransitionOverlay
+        active={loggingOut}
+        label="Signing out"
+        durationMs={900}
+        onDone={completeLogout}
+      />
       <input type="checkbox" id="menu-toggle" className="menu-toggle-input" />
 
       <div className="app-topbar">
-        <Link href="/dashboard" className="app-topbar__brand">
+        <Link href="/dashboard" className="app-topbar__brand" data-dockline-logo-target>
           <Logo size={22} />
           Dockline
         </Link>
@@ -92,7 +102,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <div className="app-userbar__divider" />
           <span className="app-userbar__avatar">{name?.[0]?.toUpperCase() ?? "?"}</span>
           <span className="app-userbar__name">{name}</span>
-          <button className="lien-secondaire" type="button" onClick={logout} title="Log out">
+          <button
+            className="lien-secondaire"
+            type="button"
+            onClick={logout}
+            disabled={loggingOut}
+            title="Log out"
+          >
             <LogOutIcon />
           </button>
         </div>

@@ -1,45 +1,26 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Logo } from "./Logo";
+import Splash from "./Splash";
 
+// Plays once per browser session, on whichever page is entered first
+// (landing, login, or a direct link straight into the app) — mounted at
+// the root layout so every entry point is covered, not just /dashboard.
 export default function LoadingIntro() {
-  const [visible, setVisible] = useState(false);
-  const [fading, setFading] = useState(false);
+  const [active, setActive] = useState(false);
 
   useEffect(() => {
     if (sessionStorage.getItem("c04_intro_shown")) return;
-    setVisible(true);
-    const fadeTimer = setTimeout(() => setFading(true), 1400);
-    const hideTimer = setTimeout(() => {
-      setVisible(false);
-      sessionStorage.setItem("c04_intro_shown", "1");
-    }, 1700);
-    return () => {
-      clearTimeout(fadeTimer);
-      clearTimeout(hideTimer);
-    };
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reading sessionStorage, an external system, on mount
+    setActive(true);
   }, []);
 
-  if (!visible) return null;
+  function handleDone() {
+    sessionStorage.setItem("c04_intro_shown", "1");
+    setActive(false);
+  }
 
-  return (
-    <div className={`intro-overlay ${fading ? "intro-overlay--fade" : ""}`}>
-      <div className="intro-scene">
-        <div className="intro-cube">
-          <div className="intro-cube__face intro-cube__face--front">
-            <Logo size={40} />
-          </div>
-          <div className="intro-cube__face intro-cube__face--back">
-            <Logo size={40} />
-          </div>
-          <div className="intro-cube__face intro-cube__face--right" />
-          <div className="intro-cube__face intro-cube__face--left" />
-          <div className="intro-cube__face intro-cube__face--top" />
-          <div className="intro-cube__face intro-cube__face--bottom" />
-        </div>
-        <p className="intro-scene__label">Loading Dockline…</p>
-      </div>
-    </div>
-  );
+  if (!active) return null;
+
+  return <Splash targetSelector="[data-dockline-logo-target]" onDone={handleDone} />;
 }

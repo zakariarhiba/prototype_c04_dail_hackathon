@@ -716,7 +716,10 @@ input[type="search"] {
   display: none;
   align-items: flex-end;
   padding: var(--spacing-4);
-  background: linear-gradient(160deg, #0b1220 0%, #1f3a63 55%, #1f6feb 100%);
+  background:
+    linear-gradient(180deg, rgba(11, 18, 32, 0.15) 0%, rgba(11, 18, 32, 0.85) 100%),
+    url("/login-illustration.png") center / cover no-repeat,
+    linear-gradient(160deg, #0b1220 0%, #1f3a63 55%, #1f6feb 100%);
   color: #fff;
 }
 
@@ -794,7 +797,121 @@ input[type="search"] {
   margin: 0;
 }
 
-/* --- 3D loading intro (cosmetic, plays once per session) --- */
+/* --- Splash entry animation (cosmetic, plays once per session) ---
+   icon draws in -> fades -> glow flash -> wordmark assembles -> flies to
+   the real header logo if one is present on the page, else fades out. */
+
+.splash {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #0b1220;
+  opacity: 1;
+  transition: opacity 0.4s ease;
+}
+
+.splash--fade {
+  opacity: 0;
+}
+
+.splash-icon {
+  position: absolute;
+  width: 96px;
+  height: 96px;
+}
+
+.splash-icon img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation:
+    splash-icon-draw 0.85s cubic-bezier(0.65, 0, 0.35, 1) forwards,
+    splash-icon-fade 0.45s ease forwards 0.9s;
+}
+
+@keyframes splash-icon-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+@keyframes splash-icon-fade {
+  to {
+    opacity: 0;
+  }
+}
+
+.splash-glow {
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(76, 141, 250, 0.55) 0%, rgba(76, 141, 250, 0) 70%);
+  opacity: 0;
+  animation: splash-glow-flash 0.7s ease forwards 0.92s;
+}
+
+@keyframes splash-glow-flash {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.35);
+    opacity: 0;
+  }
+}
+
+.splash-word {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: #fff;
+  font-size: 1.6rem;
+  font-weight: 700;
+  animation: splash-word-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  transform-origin: center;
+  transition: transform 0.6s cubic-bezier(0.65, 0, 0.35, 1);
+}
+
+.splash-word img {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: block;
+}
+
+@keyframes splash-word-in {
+  from {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  60% {
+    opacity: 1;
+    transform: scale(1.03);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.splash-word--fly {
+  transform: translate(var(--fly-x, 0), var(--fly-y, 0)) scale(var(--fly-scale, 1));
+}
+
+/* --- 3D loading intro (cosmetic, used for post-login/logout handoffs) --- */
 
 .intro-overlay {
   position: fixed;
@@ -841,6 +958,12 @@ input[type="search"] {
   border: 1px solid rgba(76, 141, 250, 0.6);
 }
 
+.intro-cube__face img {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+}
+
 .intro-cube__face--front {
   transform: translateZ(45px);
 }
@@ -870,6 +993,13 @@ input[type="search"] {
   font-size: 0.85rem;
 }
 
+.intro-scene__pct {
+  display: inline-block;
+  min-width: 2.6em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+}
+
 @keyframes intro-cube-spin {
   from {
     transform: rotateX(0deg) rotateY(0deg);
@@ -879,20 +1009,50 @@ input[type="search"] {
   }
 }
 
-/* --- Page transition (fade+rise on route change, no animation library) --- */
+/* --- Page transition (fade+3D tilt on route change, no animation library) --- */
 
 .page-transition {
-  animation: page-fade-in 0.25s ease both;
+  animation: page-fade-in 0.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+  transform-style: preserve-3d;
 }
 
 @keyframes page-fade-in {
   from {
     opacity: 0;
-    transform: translateY(6px);
+    transform: perspective(900px) rotateX(3deg) translateY(10px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: perspective(900px) rotateX(0deg) translateY(0);
+  }
+}
+
+/* --- Route progress bar (small cue on every route change, site-wide) --- */
+
+.route-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  z-index: 200;
+  background: var(--color-primary);
+  transform-origin: left;
+  animation: route-progress-run 0.5s ease-out forwards;
+}
+
+@keyframes route-progress-run {
+  0% {
+    transform: scaleX(0);
+    opacity: 1;
+  }
+  70% {
+    transform: scaleX(0.85);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1);
+    opacity: 0;
   }
 }
 
@@ -957,6 +1117,20 @@ input[type="search"] {
 
 .landing-hero__cta {
   margin-top: var(--spacing-1);
+}
+
+.landing-hero__image {
+  width: 100%;
+  max-width: 720px;
+  border-radius: var(--radius-2, 12px);
+  overflow: hidden;
+  margin-top: var(--spacing-2);
+}
+
+.landing-hero__image img {
+  display: block;
+  width: 100%;
+  height: auto;
 }
 
 .landing-grid {

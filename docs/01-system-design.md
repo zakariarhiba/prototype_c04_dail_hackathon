@@ -68,6 +68,8 @@ write without review.**
 
 ## 4. Classification: new vs. duplicate vs. ambiguous
 
+![The three classification outcomes: new delivery against an open PO, a duplicate re-scan, and an ambiguous case handed to a human](assets/scenario-classification.png)
+
 Carried from v1's `classifyScan`, kept because it's a defensible first-cut
 heuristic, not because it's validated:
 
@@ -84,6 +86,8 @@ real scan logs — see `05-wolf-handoff.md` once that's written, and the open
 question in `02-client-interview.md`.
 
 ## 5. Reconciliation logic
+
+![Evidence-trail schema: an invoice fanning out into per-delivery-note evidence lines, most matching, some flagged](assets/evidence-trail.png)
 
 Reconcile against **accepted** quantity, not received — a damaged unit that
 was rejected should not silently show up as a "shortage" the supplier gets

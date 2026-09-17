@@ -54,7 +54,9 @@ export default function ReceivingPage() {
   async function simulateScan() {
     setBusy(true);
     setError(null);
-    await fetch("/api/simulate-scan", { method: "POST" });
+    const res = await fetch("/api/simulate-scan", { method: "POST" });
+    const data = await res.json();
+    if (!data.ok) setError(data.error);
     await refresh();
     setBusy(false);
   }

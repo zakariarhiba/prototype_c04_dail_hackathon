@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Logo } from "../components/Logo";
+import TransitionOverlay from "../components/TransitionOverlay";
 import { EyeIcon, EyeOffIcon } from "../components/icons";
 
 export default function LoginPage() {
@@ -10,15 +11,23 @@ export default function LoginPage() {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [signingIn, setSigningIn] = useState(false);
+  const displayName = name.trim() || "Clerk on duty";
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    localStorage.setItem("c04_user_name", name.trim() || "Clerk on duty");
-    router.push("/dashboard");
+    localStorage.setItem("c04_user_name", displayName);
+    setSigningIn(true);
   }
 
   return (
     <div className="login-screen">
+      <TransitionOverlay
+        active={signingIn}
+        label={`Signing in as ${displayName}`}
+        durationMs={1000}
+        onDone={() => router.push("/dashboard")}
+      />
       <div className="login-screen__visual">
         <div className="login-screen__visual-text">
           <h1>Dockline</h1>
@@ -41,6 +50,7 @@ export default function LoginPage() {
               placeholder="Clerk on duty"
               autoComplete="off"
               autoFocus
+              disabled={signingIn}
             />
           </div>
 
@@ -55,20 +65,22 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Not checked, cosmetic only"
                 autoComplete="new-password"
+                disabled={signingIn}
               />
               <button
                 type="button"
                 className="login-card__reveal"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label="Toggle password visibility"
+                disabled={signingIn}
               >
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </div>
 
-          <button type="submit" className="bouton login-card__submit">
-            Log in
+          <button type="submit" className="bouton login-card__submit" disabled={signingIn}>
+            {signingIn ? "Signing in…" : "Log in"}
           </button>
 
           <p className="login-card__note">

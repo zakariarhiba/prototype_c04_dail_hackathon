@@ -1,11 +1,12 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Logo } from "./components/Logo";
 
 export default function LandingPage() {
   return (
     <div className="landing-page">
       <header className="landing-header">
-        <span className="landing-header__brand">
+        <span className="landing-header__brand" data-dockline-logo-target>
           <Logo size={26} />
           Dockline
         </span>
@@ -30,6 +31,15 @@ export default function LandingPage() {
           <Link href="/login" className="bouton landing-hero__cta">
             Log in to try it
           </Link>
+          <div className="landing-hero__image">
+            <Image
+              src="/landing-hero.png"
+              alt="Illustration of a dealership loading bay: a delivery truck at the dock, with crates flagged for review or confirmed as accepted"
+              width={1024}
+              height={572}
+              priority
+            />
+          </div>
         </section>
 
         <section className="landing-grid">

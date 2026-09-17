@@ -1,4 +1,4 @@
-import { approveDiscrepancyNotice } from "@/app/lib/store";
+import { simulateScanFromPart } from "@/app/lib/store";
 import { getSession } from "@/app/lib/session";
 
 export async function POST(request: Request) {
@@ -6,13 +6,10 @@ export async function POST(request: Request) {
   if (!session) {
     return Response.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
-  // v3 (§15): single-account scope — role check shelved, not deleted (see
-  // §15's note; §10's clerk/approver split stays in code, just unenforced).
-
   const body = await request.json();
   try {
-    const notice = await approveDiscrepancyNotice({ ...body, approved_by: session.name });
-    return Response.json({ ok: true, notice });
+    const pending = await simulateScanFromPart(body);
+    return Response.json({ ok: true, pendingScan: pending });
   } catch (err) {
     return Response.json(
       { ok: false, error: err instanceof Error ? err.message : "Unknown error" },

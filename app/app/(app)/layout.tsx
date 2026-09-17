@@ -8,7 +8,7 @@ import TransitionOverlay from "../components/TransitionOverlay";
 import PageTransition from "../components/PageTransition";
 import ThemeToggle from "../components/ThemeToggle";
 import { useSession } from "../lib/useSession";
-import { BellIcon, BoxIcon, ChatIcon, HomeIcon, InboxIcon, InfoIcon, LogOutIcon, ReceiptIcon } from "../components/icons";
+import { BellIcon, BoxIcon, ChatIcon, HomeIcon, InboxIcon, InfoIcon, LogOutIcon, QrIcon, ReceiptIcon, RouteIcon } from "../components/icons";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -45,8 +45,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
       <div className="app-topbar">
         <Link href="/dashboard" className="app-topbar__brand" data-dockline-logo-target>
-          <Image src="/trast-mark.png" alt="" width={22} height={22} />
-          trast
+          <Image src="/trast-mark.png" alt="" width={30} height={30} />
+          Trast Dockline
         </Link>
         <label htmlFor="menu-toggle" className="app-topbar__burger" aria-label="Toggle menu">
           <span />
@@ -60,8 +60,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <aside className="app-sidebar">
         <Link href="/dashboard" className="app-sidebar__brand">
           <span className="app-sidebar__brand-row">
-            <Image src="/trast-mark.png" alt="" width={26} height={26} />
-            trast
+            <Image src="/trast-mark.png" alt="" width={34} height={34} />
+            Trast Dockline
           </span>
           <span>Case C04 &middot; delivery vs. invoice reconciliation &middot; SYNTHETIC DATA</span>
         </Link>
@@ -81,6 +81,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <Link href="/inventory">
             <BoxIcon className="app-nav__icone" />
             Inventory
+          </Link>
+          <Link href="/parts">
+            <QrIcon className="app-nav__icone" />
+            Parts &amp; QR
+          </Link>
+          <Link href="/po">
+            <RouteIcon className="app-nav__icone" />
+            PO tracker
           </Link>
         </nav>
         <div className="app-sidebar__footer">

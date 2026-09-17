@@ -13,7 +13,12 @@ import type {
   EvidenceLine,
   ScanClassification,
   InventoryLedgerLine,
+  Part,
+  PoStatus,
+  PoTimeline,
+  PoTimelineEvent,
 } from "./types";
+import QRCode from "qrcode";
 
 // ---------------------------------------------------------------------------
 // Seed data is read (never written) from ./context/initial.json, the source
@@ -102,7 +107,7 @@ export async function getState(): Promise<AppState> {
       "select id, order_id, part, listed_quantity, logged_via from delivery_notes order by id"
     ),
     pool.query<Receipt>(
-      "select id, delivery_note, received, damaged, accepted, created_at from receipts order by id"
+      "select id, delivery_note, received, damaged, accepted, created_at, damage_evidence_text, damage_evidence_image from receipts order by id"
     ),
     pool.query<DiscardedDuplicate>(
       "select scan_id, order_id, part, listed_quantity, matched_delivery_note, confirmed_by_clerk_at from discarded_duplicates order by confirmed_by_clerk_at"
@@ -131,7 +136,7 @@ export async function resetState(): Promise<void> {
   await pool.query("begin");
   try {
     await pool.query(
-      "truncate discrepancy_notices, discarded_duplicates, receipts, delivery_notes, orders, counters, users"
+      "truncate discrepancy_notices, discarded_duplicates, receipts, delivery_notes, orders, parts, counters, users"
     );
     for (const u of DEMO_USERS) {
       const password_hash = await hashPassword(u.password);
@@ -370,6 +375,8 @@ export async function confirmReceipt(input: {
   damaged: number;
   accepted: number;
   clerk_name: string;
+  damage_evidence_text?: string | null;
+  damage_evidence_image?: string | null;
 }): Promise<{ deliveryNote?: DeliveryNote; receipt?: Receipt; discarded?: DiscardedDuplicate }> {
   await ensureSchema();
   const mem = pendingMemory();
@@ -404,6 +411,14 @@ export async function confirmReceipt(input: {
     return { discarded };
   }
 
+  // §15: damage evidence required whenever damaged > 0 — enforced here
+  // (UI layer), the DB stays permissive per §15's own note.
+  if (input.damaged > 0 && !input.damage_evidence_text?.trim() && !input.damage_evidence_image) {
+    throw new Error(
+      "Damage reported but no evidence given — add a description or a photo before confirming."
+    );
+  }
+
   // decision === "NEW": create the delivery note + receipt, exactly as the
   // clerk confirmed (which may correct received/damaged/accepted from what
   // was scanned, and may override the system's suggested flag).
@@ -421,14 +436,24 @@ export async function confirmReceipt(input: {
     damaged: input.damaged,
     accepted: input.accepted,
     created_at: new Date().toISOString(),
+    damage_evidence_text: input.damage_evidence_text?.trim() || null,
+    damage_evidence_image: input.damage_evidence_image || null,
   };
   await pool.query(
     "insert into delivery_notes (id, order_id, part, listed_quantity, logged_via) values ($1, $2, $3, $4, $5)",
     [dn.id, dn.order_id, dn.part, dn.listed_quantity, dn.logged_via]
   );
   await pool.query(
-    "insert into receipts (id, delivery_note, received, damaged, accepted) values ($1, $2, $3, $4, $5)",
-    [receipt.id, receipt.delivery_note, receipt.received, receipt.damaged, receipt.accepted]
+    "insert into receipts (id, delivery_note, received, damaged, accepted, damage_evidence_text, damage_evidence_image) values ($1, $2, $3, $4, $5, $6, $7)",
+    [
+      receipt.id,
+      receipt.delivery_note,
+      receipt.received,
+      receipt.damaged,
+      receipt.accepted,
+      receipt.damage_evidence_text,
+      receipt.damage_evidence_image,
+    ]
   );
   mem.pendingScan = null;
   return { deliveryNote: dn, receipt };
@@ -480,7 +505,9 @@ export async function simulateIncomingInvoice(): Promise<PendingInvoiceReview> {
       "select id, order_id, part, listed_quantity, logged_via from delivery_notes where order_id = $1 and part = $2",
       [scenario.order_id, scenario.part]
     ),
-    pool.query<Receipt>("select id, delivery_note, received, damaged, accepted, created_at from receipts"),
+    pool.query<Receipt>(
+      "select id, delivery_note, received, damaged, accepted, created_at, damage_evidence_text, damage_evidence_image from receipts"
+    ),
   ]);
 
   const evidence: EvidenceLine[] = deliveryNotes.rows.map((dn) => {
@@ -640,6 +667,202 @@ export async function addNewStock(input: {
   return {
     order: { id: orderId, part, quantity: input.quantity },
     deliveryNote: { id: dnId, order_id: orderId, part, listed_quantity: input.quantity, logged_via: "clerk_added_stock" },
-    receipt: { id: rcId, delivery_note: dnId, received: input.quantity, damaged: 0, accepted: input.quantity, created_at: new Date().toISOString() },
+    receipt: {
+      id: rcId,
+      delivery_note: dnId,
+      received: input.quantity,
+      damaged: 0,
+      accepted: input.quantity,
+      created_at: new Date().toISOString(),
+      damage_evidence_text: null,
+      damage_evidence_image: null,
+    },
   };
+}
+
+// ---------------------------------------------------------------------------
+// v3 Part / inventory master (§15). Additive to the §11 receipts-derived
+// ledger, not a replacement — quantity_on_hand here is a starting count set
+// at creation, not kept in sync with §11's SUM(accepted), to avoid two write
+// paths fighting over one number (see §15).
+// ---------------------------------------------------------------------------
+
+export async function listParts(): Promise<Part[]> {
+  await ensureSchema();
+  const res = await getPool().query<Part>(
+    "select id, sku, name, description, quantity_on_hand, qr_payload, created_at from parts order by created_at desc"
+  );
+  return res.rows;
+}
+
+export async function addPart(input: {
+  sku: string;
+  name: string;
+  description: string;
+  quantity: number;
+}): Promise<Part> {
+  await ensureSchema();
+  const sku = input.sku.trim();
+  const name = input.name.trim();
+  if (!sku) throw new Error("SKU is required.");
+  if (!name) throw new Error("Name is required.");
+  if (!Number.isInteger(input.quantity) || input.quantity < 0) {
+    throw new Error("Quantity must be a non-negative whole number.");
+  }
+
+  const id = await nextId("PART");
+  // Prototype-only identifier (§15) — not a real GS1/barcode payload.
+  const qrPayload = JSON.stringify({ type: "c04_part", id, sku });
+
+  await getPool().query(
+    "insert into parts (id, sku, name, description, quantity_on_hand, qr_payload) values ($1, $2, $3, $4, $5, $6)",
+    [id, sku, name, input.description.trim(), input.quantity, qrPayload]
+  );
+
+  return {
+    id,
+    sku,
+    name,
+    description: input.description.trim(),
+    quantity_on_hand: input.quantity,
+    qr_payload: qrPayload,
+    created_at: new Date().toISOString(),
+  };
+}
+
+// PNG data URL — displayed directly in an <img>, generated fresh per
+// request rather than stored, so it always reflects the current payload.
+export async function partQrDataUrl(part: Part): Promise<string> {
+  return QRCode.toDataURL(part.qr_payload, { margin: 1, width: 240 });
+}
+
+// ---------------------------------------------------------------------------
+// v3 sender-scan step (§15): scans a Part's QR against an open PO, producing
+// the same PendingScan shape §3's classify/receive flow already consumes.
+// Simulated event (labeled in the UI); classifyScan() itself (§4) is
+// unchanged — this only supplies its input from real Part/PO data instead
+// of the fixed SCAN_SCENARIOS rotation.
+// ---------------------------------------------------------------------------
+
+export async function simulateScanFromPart(input: {
+  part_id: string;
+  order_id: string;
+  listed_quantity: number;
+}): Promise<PendingScan> {
+  await ensureSchema();
+  const mem = pendingMemory();
+  if (mem.pendingScan) {
+    throw new Error(
+      "A scan is already pending clerk confirmation. Confirm or resolve it before simulating another."
+    );
+  }
+
+  const pool = getPool();
+  const [partRes, orderRes, deliveryNotes, orders] = await Promise.all([
+    pool.query<Part>("select id, sku, name, description, quantity_on_hand, qr_payload, created_at from parts where id = $1", [
+      input.part_id,
+    ]),
+    pool.query<Order>("select id, part, quantity from orders where id = $1", [input.order_id]),
+    pool.query<DeliveryNote>("select id, order_id, part, listed_quantity, logged_via from delivery_notes"),
+    pool.query<Order>("select id, part, quantity from orders"),
+  ]);
+  const part = partRes.rows[0];
+  const order = orderRes.rows[0];
+  if (!part) throw new Error("Unknown part — scan a QR from the Parts page.");
+  if (!order) throw new Error("Unknown PO.");
+  if (!Number.isInteger(input.listed_quantity) || input.listed_quantity <= 0) {
+    throw new Error("Quantity must be a positive whole number.");
+  }
+
+  const scenario: ScanScenario = {
+    label: `Outbound scan (simulated): ${part.name} (${part.sku}) against ${order.id}`,
+    order_id: order.id,
+    part: part.name,
+    listed_quantity: input.listed_quantity,
+  };
+  const result = classifyScan(scenario, deliveryNotes.rows, orders.rows);
+  const pending: PendingScan = {
+    scan_id: await nextId("SCAN"),
+    order_id: scenario.order_id,
+    part: scenario.part,
+    listed_quantity: scenario.listed_quantity,
+    system_classification: result.classification,
+    system_confidence: result.confidence,
+    system_reasoning: result.reasoning,
+    matched_delivery_note: result.matched_delivery_note,
+    scenario_label: scenario.label,
+  };
+  mem.pendingScan = pending;
+  return pending;
+}
+
+// ---------------------------------------------------------------------------
+// v3 PO lifecycle (§15): status computed fresh from live state, same
+// drift-avoidance reasoning as §11's ledger — never a stored column.
+// ---------------------------------------------------------------------------
+
+export async function getPoTimeline(orderId: string): Promise<PoTimeline | null> {
+  await ensureSchema();
+  const pool = getPool();
+  const [orderRes, dnsRes, noticesRes] = await Promise.all([
+    pool.query<Order>("select id, part, quantity from orders where id = $1", [orderId]),
+    pool.query<DeliveryNote>(
+      "select id, order_id, part, listed_quantity, logged_via from delivery_notes where order_id = $1 order by id",
+      [orderId]
+    ),
+    pool.query<DiscrepancyNotice>(
+      "select id, invoice_id, order_id, part, invoiced_quantity, accepted_total, discrepancy, evidence, approved_by, approved_at, simulated from discrepancy_notices where order_id = $1 order by approved_at",
+      [orderId]
+    ),
+  ]);
+  const order = orderRes.rows[0];
+  if (!order) return null;
+
+  const dnIds = dnsRes.rows.map((dn) => dn.id);
+  const receiptsRes = dnIds.length
+    ? await pool.query<Receipt>(
+        `select id, delivery_note, received, damaged, accepted, created_at, damage_evidence_text, damage_evidence_image
+         from receipts where delivery_note = any($1) order by created_at`,
+        [dnIds]
+      )
+    : { rows: [] as Receipt[] };
+
+  const events: PoTimelineEvent[] = [];
+  for (const dn of dnsRes.rows) {
+    const r = receiptsRes.rows.find((r) => r.delivery_note === dn.id);
+    events.push({
+      at: r?.created_at ?? new Date(0).toISOString(),
+      label: r
+        ? `${dn.id} logged (${dn.logged_via}) — received ${r.received}, damaged ${r.damaged}, accepted ${r.accepted}`
+        : `${dn.id} logged (${dn.logged_via}), no receipt yet`,
+    });
+  }
+  for (const n of noticesRes.rows) {
+    events.push({
+      at: n.approved_at,
+      label: `Discrepancy notice ${n.id} approved by ${n.approved_by} (${n.discrepancy > 0 ? "under-billed" : "over-billed"} by ${Math.abs(n.discrepancy)})`,
+    });
+  }
+  events.sort((a, b) => new Date(a.at).getTime() - new Date(b.at).getTime());
+
+  const acceptedTotal = receiptsRes.rows.reduce((sum, r) => sum + r.accepted, 0);
+
+  let status: PoStatus = "open";
+  if (noticesRes.rows.length > 0) {
+    status = "closed";
+  } else if (acceptedTotal >= order.quantity && order.quantity > 0) {
+    status = "delivered";
+  } else if (dnsRes.rows.length > 0) {
+    status = "in_process";
+  }
+
+  return { order, status, accepted_total: acceptedTotal, events };
+}
+
+export async function listPoTimelines(): Promise<PoTimeline[]> {
+  await ensureSchema();
+  const pool = getPool();
+  const orders = await pool.query<Order>("select id, part, quantity from orders order by id");
+  const timelines = await Promise.all(orders.rows.map((o) => getPoTimeline(o.id)));
+  return timelines.filter((t): t is PoTimeline => t !== null);
 }

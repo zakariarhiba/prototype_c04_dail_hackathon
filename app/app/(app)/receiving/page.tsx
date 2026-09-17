@@ -29,9 +29,22 @@ export default function ReceivingPage() {
   const [received, setReceived] = useState<number>(0);
   const [damaged, setDamaged] = useState<number>(0);
   const [accepted, setAccepted] = useState<number>(0);
+  const [damageText, setDamageText] = useState("");
+  const [damageImage, setDamageImage] = useState<string | null>(null);
   const { user } = useSession();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function onDamageImageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setDamageImage(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => setDamageImage(reader.result as string);
+    reader.readAsDataURL(file);
+  }
 
   async function refresh() {
     const res = await fetch("/api/state");
@@ -42,6 +55,8 @@ export default function ReceivingPage() {
       setReceived(data.pendingScan.listed_quantity);
       setDamaged(0);
       setAccepted(data.pendingScan.listed_quantity);
+      setDamageText("");
+      setDamageImage(null);
     } else {
       setDecision(null);
     }
@@ -75,6 +90,8 @@ export default function ReceivingPage() {
         received,
         damaged,
         accepted,
+        damage_evidence_text: damageText,
+        damage_evidence_image: damageImage,
       }),
     });
     const data = await res.json();
@@ -198,6 +215,25 @@ export default function ReceivingPage() {
                     onChange={(e) => setAccepted(Number(e.target.value))}
                   />
                 </div>
+                {damaged > 0 && (
+                  <>
+                    <div className="champ">
+                      <label>Damage description</label>
+                      <input
+                        value={damageText}
+                        onChange={(e) => setDamageText(e.target.value)}
+                        placeholder="what's damaged, how"
+                      />
+                    </div>
+                    <div className="champ">
+                      <label>Damage photo (optional if description given)</label>
+                      <input type="file" accept="image/*" onChange={onDamageImageChange} />
+                      <span className="etiquette-statut etiquette-statut--attention">
+                        Simulated — photo never leaves this prototype
+                      </span>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -212,18 +248,13 @@ export default function ReceivingPage() {
             <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
               Confirming as <strong>{user?.name ?? "…"}</strong>.
             </p>
-            {user && user.role !== "clerk" && (
-              <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>
-                Signed in as a reconciliation lead — only a parts receiving lead can confirm a receipt.
-              </p>
-            )}
 
             {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
 
             <button
               className="bouton bouton--sombre"
               onClick={submitConfirmation}
-              disabled={busy || !decision || user?.role !== "clerk"}
+              disabled={busy || !decision}
             >
               {busy ? "Saving..." : "Confirm"}
             </button>
@@ -245,6 +276,7 @@ export default function ReceivingPage() {
                   <th>Part</th>
                   <th>Listed qty</th>
                   <th>Received / Damaged / Accepted</th>
+                  <th>Damage evidence</th>
                   <th>Logged via</th>
                 </tr>
               </thead>
@@ -258,6 +290,19 @@ export default function ReceivingPage() {
                       <td>{dn.part}</td>
                       <td>{dn.listed_quantity}</td>
                       <td>{r ? `${r.received} / ${r.damaged} / ${r.accepted}` : "(no receipt)"}</td>
+                      <td style={{ color: "var(--color-text-muted)" }}>
+                        {r?.damage_evidence_text ?? (r?.damage_evidence_image ? "(photo only)" : "-")}
+                        {r?.damage_evidence_image && (
+                          // eslint-disable-next-line @next/next/no-img-element -- stored data URL, not a static asset
+                          <img
+                            src={r.damage_evidence_image}
+                            alt="Damage evidence"
+                            width={40}
+                            height={40}
+                            style={{ display: "inline-block", marginLeft: 6, verticalAlign: "middle", borderRadius: 4 }}
+                          />
+                        )}
+                      </td>
                       <td style={{ color: "var(--color-text-muted)" }}>{dn.logged_via}</td>
                     </tr>
                   );

@@ -108,14 +108,9 @@ export default function InventoryPage() {
           </div>
           <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
             Adding as <strong>{user?.name ?? "…"}</strong>.
-            {user && user.role !== "clerk" && (
-              <span style={{ color: "var(--color-erreur-text)" }}>
-                {" "}Signed in as a reconciliation lead — only a parts receiving lead can add stock.
-              </span>
-            )}
           </p>
           {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
-          <button className="bouton bouton--sombre" type="submit" disabled={busy || user?.role !== "clerk"}>
+          <button className="bouton bouton--sombre" type="submit" disabled={busy}>
             {busy ? "Saving..." : "Add stock"}
           </button>
         </form>

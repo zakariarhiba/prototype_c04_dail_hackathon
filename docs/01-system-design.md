@@ -372,6 +372,13 @@ demo login credentials. Changes:
   not an inconsistency: the engineering trail (how this was built, why)
   stays keyed to the project's working name; what a reviewer or demo
   audience actually sees now matches the assigned client.
+- **Update, 2026-09-17 (phase 13 follow-up): visible brand text changed to
+  "Trast Dockline."** Zakaria asked for the logo mark to render larger
+  (22-26px → 30-34px across topbar/sidebar/landing — it read too small)
+  and for the visible wordmark to combine both names rather than "trast"
+  alone. Changed on the four screens listed above (login visual, landing
+  header, app topbar, app sidebar) — cosmetic text/sizing only, no logic,
+  no further rename of internal identifiers.
 - **Login credentials simplified.** Added a `username` column to `users`
   (separate from the existing `name` display column) so the login field can
   be a short, professional identifier instead of a full display name typed
@@ -399,3 +406,84 @@ next action without another prompt" already matches how
 "Simulate incoming delivery note"/"Simulate incoming invoice" work (§3, §5)
 — one click surfaces the system's classification/evidence and the human
 decision immediately, no second prompt.
+
+## 15. v3: full lifecycle rebuild — inventory master, QR, PO tracking,
+    damage evidence (2026-09-17)
+
+Zakaria asked for a fuller, more concrete presentation scenario: a real
+inventory master (not just the §11 derived ledger) with QR codes, an
+end-to-end PO lifecycle view, and photographic/textual proof of damage —
+walked start-to-finish in one demo, single account for now. This section
+scopes that; Phase 6 in `TASKS.md` builds it (phases 16-20).
+
+**New entity — Part (inventory master).** `id`, `sku`, `name`, `description`,
+`quantity_on_hand`, `qr_payload` (opaque string encoding the part's `id`,
+generated at creation — not a real GS1/barcode standard, a prototype
+identifier only), `created_at`. A new "Add new part" form (parts-receiving
+lead role, but see the single-account note below) creates a Part, sets
+initial quantity, and generates/display its QR. This is additive to, not a
+replacement of, §11's receipts-derived ledger — §11 still answers "how much
+of part X have we actually received and accepted," Part answers "what parts
+exist and what a fresh unit's QR encodes." `quantity_on_hand` on Part is a
+*starting* count set at creation, not kept in sync with §11's receipt sum —
+avoids two write paths fighting over one number. The ledger view should show
+both side by side, labeled distinctly, not merged into one figure.
+
+**PO lifecycle.** PO status — `open` (nothing delivered yet) →
+`in_process` (at least one DN logged, not yet fully covered) → `delivered`
+(accepted quantity across its DNs meets ordered quantity) → `closed`
+(a discrepancy notice has been approved for it, or its delivered quantity
+matches invoiced with no notice needed) — is **computed on read from
+orders/delivery_notes/receipts/discrepancy_notices, the same way §11's
+ledger is**, not a stored column. One less write path to keep in sync, and
+it can never drift from the receipts/notices it's derived from (deviates
+from this section's first draft, which proposed a stored `status` column;
+corrected before writing code, logged here per the root AGENTS.md rule on
+design/code drift). A PO stays `open`/`in_process` indefinitely if never
+fully resolved — no auto-timeout, matches the brief's "don't guess, surface
+uncertainty" spirit. New PO detail page: single PO's full timeline
+(created → each DN logged, with timestamp/actor → invoice arrival →
+reconciliation outcome), replacing the need to cross-reference Receiving/
+Invoices/Inventory separately to reconstruct one PO's story.
+
+**Sender-scan step.** Today §3's state machine starts at "Scan arrives
+(simulated event)" with no distinct sender identity before the clerk's
+review. Adding an explicit prior step: a "simulate outbound scan" action
+(labeled simulated, same as today's incoming-scan/invoice buttons) that
+scans a Part's QR against an open PO and produces the DN the existing
+classify/receive flow already consumes — this makes the QR real work
+(read, not decorative) without changing classify/reconcile logic (§4, §5)
+at all. It is additive framing on top of the existing scan event, not a new
+classification path.
+
+**Damage evidence.** Receipt gains an optional `damage_evidence` — free-text
+description, and/or an uploaded image (stored as a file, path referenced on
+the Receipt row; no image processing/OCR). Required by the UI (not the DB —
+keep the DB permissive, enforce at the form) whenever the clerk records
+`damaged > 0`, matching the brief's "prove it, don't just log a number" for
+this v3 pass. Still simulated in the sense that the photo never leaves the
+prototype (no real supplier claim filed) — labeled as such next to the
+upload control, consistent with §6's simulated-input labeling rule.
+
+**Single-account shelving of §10 role gating.** For this rebuild, §10's
+`clerk`/`approver` role split (real session, real 403 on mismatch) is
+temporarily disabled — one authenticated account can do everything
+(confirm-receipt, approve-notice, add-part, everything). This is a
+deliberate, reversible simplification for the demo narrative ("the parts
+receiving lead does the whole flow live"), not a design reversal: the
+`role` column, the session, and the per-route checks stay in the code,
+just not enforced. Re-enabling role separation, plus real accounts
+management, audit trail, more KPIs (§13), and AI-assisted review are
+explicit next-phase work (see `TASKS.md`'s "Explicit future work" under
+Phase 6), not covered by this section.
+
+**Real vs. simulated, this pass** (extends §6's table):
+- Real: Part CRUD, QR generation/lookup, PO status transitions, PO
+  timeline read-model, damage evidence storage.
+- Simulated, must say so in the UI: the outbound scan event itself (no real
+  scanner/camera), the QR's use (a prototype identifier, not a real
+  barcode standard), the damage photo (never leaves the prototype / filed
+  with a real supplier).
+- Unchanged from §4/§5: classification and reconciliation logic — this
+  section adds a step before classification, it doesn't alter the
+  heuristic or the evidence-line logic themselves.

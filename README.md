@@ -1,15 +1,20 @@
-# Dockline — Delivery Note / Invoice Reconciliation Prototype
+# Trast Dockline — Delivery Note / Invoice Reconciliation Prototype
 
-Synthetic exercise (Dail Octopus, case C04). "Dockline" is this prototype's
-product name; "C04" is the exercise's own case reference, used throughout
-`docs/`/`dev-docs/`. Not a real client, not connected to any real system.
+Synthetic exercise (Dail Octopus, case C04), built for hackathon-assigned
+client trast. "Dockline" is this prototype's internal/working product name
+(used throughout `docs/`/`dev-docs`/DB); visible brand surfaces (login,
+landing, topbar, sidebar) read "Trast Dockline." "C04" is the exercise's own
+case reference. Not a real client system, not connected to anything real.
 See `context/` for the source-of-truth brief, interview notes, and test
 data — that directory is not modified by the prototype.
 
-> **Status:** the app below is a v1 build, kept as a working reference. We
-> are re-designing before extending it further — see `docs/01-system-design.md`
-> for the current design and `TASKS.md` for what's in progress. Read
-> `AGENTS.md` first if you're picking up work here.
+> **Status:** v3 build (phase 13, awaiting review) — real auth/session,
+> inventory ledger, a Part/QR inventory master, a computed PO lifecycle
+> tracker, and required damage evidence, all under a single demo account
+> (role separation exists in the code but is currently shelved — see
+> `docs/01-system-design.md` §15). See `docs/01-system-design.md` for the
+> full design and `TASKS.md` for what's in progress/next. Read `AGENTS.md`
+> first if you're picking up work here.
 
 ## What this is
 
@@ -36,9 +41,32 @@ with a human confirming every write:
    the notice is simulated and displayed only, never sent.
 3. **Inventory ledger** (`/inventory`) — "received-to-date by part," summed
    live from accepted receipts (never called "stock on hand" — this
-   prototype has no putaway/pick/consumption events). A parts receiving
-   lead can also "add new stock": a real write of a new order/delivery-
-   note/receipt for a part/quantity typed on the spot.
+   prototype has no putaway/pick/consumption events). Can also "add new
+   stock": a real write of a new order/delivery-note/receipt for a
+   part/quantity typed on the spot.
+4. **Parts & QR** (`/parts`) — a real inventory-master ("Part") entity:
+   add a part with a SKU/name/quantity and get a generated QR code
+   (prototype identifier only, not a real GS1/barcode standard). "Simulate
+   outbound scan" scans a part's QR against an open PO, feeding the same
+   classify/confirm flow as Receiving above.
+5. **PO tracker** (`/po`, `/po/[id]`) — every PO's status
+   (`open`/`in_process`/`delivered`/`closed`), computed live from its
+   delivery notes, receipts and any approved discrepancy notice — never a
+   separate flag to drift out of sync. A PO stays open/in-process
+   indefinitely if never fully resolved. The detail page shows one PO's
+   full timeline, created through resolution.
+
+Damage evidence: on Receiving, confirming a receipt with `damaged > 0`
+requires a description and/or an uploaded photo before it can be saved —
+the photo never leaves this prototype (stored as a data URL, not sent
+anywhere).
+
+**Single account for this demo**: `docs/01-system-design.md` §10's real
+clerk-vs-approver role gating exists in the code (session, `role` column,
+per-route structure) but is currently unenforced — either seeded account
+can do everything. This is a deliberate, reversible simplification for a
+one-account walkthrough demo, not a security fix; see §15 for why and
+`TASKS.md` for when role separation comes back.
 
 ## Run instructions
 
@@ -108,12 +136,26 @@ its first logins.
   confirmation/approval action (clerk confirm, or invoice-notice approve).
 - Login/session (`app/app/lib/auth.ts`, `session.ts`, `store.ts`): a signed,
   HTTP-only cookie set on a real credential check against the seeded
-  `users` table (PBKDF2-hashed demo passwords). `POST /api/confirm-receipt`
-  requires `role=clerk`; `POST /api/approve-notice` requires
-  `role=approver`; a mismatch is a real 403, not a hidden button. See
-  `docs/01-system-design.md` §10. Not real *identity* verification — no
-  password policy, recovery flow, rate limiting, or OAuth/SSO; see
-  "Limitations" below.
+  `users` table (PBKDF2-hashed demo passwords). See `docs/01-system-design.md`
+  §10. Not real *identity* verification — no password policy, recovery
+  flow, rate limiting, or OAuth/SSO; see "Limitations" below.
+  **Role gating currently shelved (§15, phase 13):** §10's `role=clerk`/
+  `role=approver` per-route checks are still in the code but not enforced
+  — any authenticated session can confirm-receipt, approve-notice, add
+  stock, or add a part. A deliberate, reversible single-account demo
+  simplification, not a real permission model right now.
+- Part / inventory master + QR (`listParts`/`addPart`/`partQrDataUrl` in
+  `store.ts`, §15): a real Part record with a generated QR payload. Its
+  `quantity_on_hand` is a starting count set at creation only — deliberately
+  **not** kept in sync with the inventory ledger below, to avoid two write
+  paths fighting over one number; the two can legitimately diverge.
+- PO lifecycle (`getPoTimeline`/`listPoTimelines` in `store.ts`, §15): status
+  and timeline computed fresh from orders/delivery_notes/receipts/
+  discrepancy_notices on every read — same drift-avoidance approach as the
+  inventory ledger, never a stored status column.
+- Damage evidence gate (`confirmReceipt` in `store.ts`, §15): confirming a
+  receipt with `damaged > 0` and no description/photo is rejected before
+  anything is written.
 - Inventory ledger (`getInventoryLedger` in `store.ts`): `SUM(receipts.accepted)`
   grouped by part, computed fresh on every read (a query, not a maintained
   counter), never allowed to drift from the receipts it's built from. See
@@ -138,6 +180,11 @@ its first logins.
   new delivery against it.
 - The discrepancy notice: generated and displayed after human approval,
   never actually sent to a supplier or posted to accounting.
+- The "simulate outbound scan" event on `/parts`: no real scanner/camera —
+  a QR is picked from a dropdown, not read from a lens. The QR itself is a
+  prototype-only identifier, not a real GS1/barcode standard.
+- The damage photo uploaded on Receiving: stored as a data URL in this
+  app's own database, never filed with a real supplier claim.
 - The 3D loading intro is cosmetic. Login itself is real (see above) — the
   clerk/approver name shown throughout the app comes from the session, not
   free text.
@@ -160,6 +207,13 @@ its first logins.
   the demo-added `PO-2`); multi-line delivery notes, multiple parts per DN,
   and partial invoices are not modeled. The inventory ledger inherits this:
   it assumes one part per delivery note.
+- Role separation (clerk vs. approver) is currently shelved for a
+  single-account demo (see above) — not a real access-control gap to fix,
+  a deliberate temporary state; re-enabling it, plus real accounts
+  management, audit trail, and rate limiting, is explicit next-phase work.
+- Damage-evidence photos have no size limit — stored as-is as a `text`
+  data URL in Postgres. Fine for a prototype demo; would need a real cap
+  or object storage for anything beyond that.
 
 ## Next validation test
 

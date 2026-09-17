@@ -120,3 +120,24 @@ export function InfoIcon({ className }: IconProps) {
     </svg>
   );
 }
+
+export function QrIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <rect x="3" y="3" width="7" height="7" rx="1" />
+      <rect x="14" y="3" width="7" height="7" rx="1" />
+      <rect x="3" y="14" width="7" height="7" rx="1" />
+      <path d="M14 14h3v3h-3zM20 14v3M14 20h3M20 20v.01" />
+    </svg>
+  );
+}
+
+export function RouteIcon({ className }: IconProps) {
+  return (
+    <svg {...base} className={className} aria-hidden="true">
+      <circle cx="6" cy="6" r="2" />
+      <circle cx="18" cy="18" r="2" />
+      <path d="M8 6h7a4 4 0 0 1 4 4v0a4 4 0 0 1-4 4H9a4 4 0 0 0-4 4v0" />
+    </svg>
+  );
+}

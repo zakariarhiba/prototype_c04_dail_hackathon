@@ -40,13 +40,34 @@ create table if not exists receipts (
   received int not null,
   damaged int not null,
   accepted int not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+  damage_evidence_text text,
+  damage_evidence_image text
 );
 
 -- v2: inventory ledger (docs/01-system-design.md §11) needs a per-receipt
 -- timestamp to derive last_movement_at. Idempotent add for databases created
 -- before this column existed; new databases get it from the create above.
 alter table if exists receipts add column if not exists created_at timestamptz not null default now();
+
+-- v3: damage evidence (docs/01-system-design.md §15) — free text and/or an
+-- uploaded image (stored as a data URL, never leaves this prototype).
+-- Required by the UI when damaged > 0, not enforced at the DB layer.
+alter table if exists receipts add column if not exists damage_evidence_text text;
+alter table if exists receipts add column if not exists damage_evidence_image text;
+
+-- v3: Part / inventory master (docs/01-system-design.md §15). Additive to
+-- the §11 receipts-derived ledger, not a replacement — qr_payload is a
+-- prototype-only identifier, not a real GS1/barcode standard.
+create table if not exists parts (
+  id text primary key,
+  sku text not null,
+  name text not null,
+  description text not null default '',
+  quantity_on_hand int not null,
+  qr_payload text not null,
+  created_at timestamptz not null default now()
+);
 
 create table if not exists discarded_duplicates (
   scan_id text primary key,

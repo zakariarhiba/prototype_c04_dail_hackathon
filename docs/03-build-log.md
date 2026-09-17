@@ -78,3 +78,52 @@ each decision inline (why reskin-then-real-logo, why username is separate
 from display name, why the raster art was recolored instead of
 regenerated). Full verification and file-by-file diff in
 `dev-docs/phase-12-trast-client-fit.md`.
+
+## 2026-09-17 — v3 rebuild scoped: inventory master, QR, PO lifecycle, damage evidence
+
+What happened: phases 10-12 (real auth, inventory ledger, trast rebrand)
+validated by Zakaria. Same day, Zakaria asked for a fuller end-to-end demo
+scenario: a real Part/inventory-master entity with generated QR codes, a
+PO lifecycle view (created through delivered, staying open until fully
+resolved), an explicit sender-scan step ahead of the existing classify/
+receive flow, and required photo/description evidence whenever a receipt
+records damage — all walked in one continuous demo, single account for
+now (role separation from §10 shelved, not removed).
+
+Why: makes the QR/scan story concrete for presentation and gives each PO
+a single place to see its whole history, instead of cross-referencing
+Receiving/Invoices/Inventory. Single-account scope is a deliberate,
+reversible demo simplification, not a redesign — role gating, audit,
+security, more KPIs, and AI-assisted review are logged as explicit
+next-phase work.
+
+What changed: `docs/01-system-design.md` §15 written first (entities,
+lifecycle states, real-vs-simulated split for this pass), `TASKS.md`
+Phase 6 (16-20) added, before any code. See §15 for the full scope; phase
+docs for 16-20 will record what was actually built and verified.
+
+## 2026-09-17 — Phase 13 built: v3 lifecycle rebuild + click-through fixes
+
+What we did: built `docs/01-system-design.md` §15 in full (Part/inventory-
+master entity + QR generation, PO lifecycle as a computed read-model,
+sender-scan step reusing §4's classifyScan unchanged, required damage
+evidence on receipts, §10 role gating shelved for a single-account demo).
+Verified end-to-end via curl (part creation, QR data URL, scan-to-confirm
+with the damage-evidence gate, cross-role approval, PO status flipping to
+`closed`). Full detail and exact commands in
+`dev-docs/phase-13-v3-lifecycle-rebuild.md`.
+
+Zakaria then clicked through the running app and found two issues, fixed
+same phase: the About page (`/`) was session-blind and looked like it
+signed the user out (fixed: made it use `useSession()`); the landing/login
+background didn't read as trast's brand (fixed: soft indigo gradient wash
+behind the landing hero, matching §14's description of the real site
+rather than the login screen's separate dark visual panel). Two further
+cosmetic requests followed: bigger logo mark (22-26px → 30-34px) and the
+visible wordmark changed to "Trast Dockline" across login/landing/topbar/
+sidebar — text and sizing only, internal "Dockline" naming in docs/DB
+untouched. All logged in §14's follow-up note and the phase-13 doc's
+follow-up section.
+
+Why: keeps the design doc and the phase doc as the record of what changed
+and why, instead of only chat history, per the root AGENTS.md rule.

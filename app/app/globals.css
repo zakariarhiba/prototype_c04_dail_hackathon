@@ -1061,7 +1061,9 @@ input[type="search"] {
 .landing-page {
   width: 100%;
   min-height: 100vh;
-  background: var(--color-bg);
+  background:
+    radial-gradient(1200px 480px at 50% -120px, rgba(69, 32, 209, 0.16), transparent 70%),
+    var(--color-bg);
 }
 
 .landing-header {

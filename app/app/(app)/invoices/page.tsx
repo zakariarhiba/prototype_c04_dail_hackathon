@@ -172,16 +172,11 @@ export default function InvoicesPage() {
               <>
                 <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
                   Approving as <strong>{user?.name ?? "…"}</strong>.
-                  {user && user.role !== "approver" && (
-                    <span style={{ color: "var(--color-erreur-text)" }}>
-                      {" "}Signed in as a parts receiving lead — only a reconciliation lead can approve a notice.
-                    </span>
-                  )}
                 </p>
                 <button
                   className="bouton bouton--sombre"
                   onClick={approve}
-                  disabled={busy || user?.role !== "approver"}
+                  disabled={busy}
                 >
                   {busy ? "Working..." : "Approve discrepancy notice (simulated)"}
                 </button>

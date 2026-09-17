@@ -92,11 +92,16 @@ code starts. See `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
       match.
 - [x] Phase 10: real auth/session (clerk vs approver), fixes the
       localStorage-only login bug and the unlinked clerk/approver name
-      fields. Built and verified; awaiting Zakaria's review — see
-      `dev-docs/phase-10-real-auth-session.md`.
+      fields. Built and verified. Validated 2026-09-17 — see
+      `dev-docs/phase-10-real-auth-session.md`. Role gating shelved for
+      Phase 6 rebuild (single account, all access) — see Phase 6 below;
+      not deleted, planned to come back once roles/accounts management is
+      re-added.
 - [x] Phase 11: inventory ledger (derived from receipts) + "add new stock"
-      write. Built and verified; awaiting Zakaria's review — see
-      `dev-docs/phase-11-inventory-ledger.md`.
+      write. Built and verified. Validated 2026-09-17 — see
+      `dev-docs/phase-11-inventory-ledger.md`. Superseded by Phase 6's
+      real Part/inventory-master entity (this ledger was receipts-derived
+      only, no standalone part record).
 - [x] Phase 12: client-fit rebrand for hackathon-assigned client trast —
       indigo palette, "parts receiving lead"/"reconciliation lead"
       terminology, dashboard inventory link, then (same phase, escalated
@@ -105,12 +110,40 @@ code starts. See `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
       credentials (`priya_lead`/`sam_lead`), and dev-facing simulation
       explanations consolidated onto the About page. Inserted out of the
       original sequence per a hackathon brief update 2026-09-17; bumped
-      the phases below by one. Built and verified; awaiting Zakaria's
-      review — see `dev-docs/phase-12-trast-client-fit.md`.
-- [ ] Phase 13: low-stock/rupture alarms over the ledger.
-- [ ] Phase 14: KPIs (discrepancy rate, damage rate, time-to-reconcile).
-- [ ] Phase 15 (optional/fold-in): relabel simulate-scan/invoice buttons as
-      an explicit QR/barcode-trigger equivalent — cosmetic only.
+      the phases below by one. Built and verified. Validated 2026-09-17 —
+      see `dev-docs/phase-12-trast-client-fit.md`.
+- [ ] Phase 14: low-stock/rupture alarms over the ledger. Deferred behind
+      Phase 6 (needs the real Part entity first).
+- [ ] Phase 15: KPIs (discrepancy rate, damage rate, time-to-reconcile).
+- [ ] Phase 16 (optional/fold-in): relabel simulate-scan/invoice buttons as
+      an explicit QR/barcode-trigger equivalent — folded into Phase 6's QR
+      work (already partly covered by `/parts`' outbound-scan action).
+
+## Phase 6 — v3: full lifecycle rebuild (inventory master, QR, PO tracking, damage evidence)
+
+Design doc §15 written 2026-09-17; go-ahead given same day. Single-account
+scope (role gating from Phase 5/§10 shelved, not deleted — re-added as a
+later phase alongside audit/security/more KPIs/AI review automation, per
+Zakaria).
+
+- [x] `docs/01-system-design.md` §15 written (Part/inventory-master entity,
+      QR code, PO status/lifecycle, sender-scan step, damage evidence,
+      single-account shelving of §10 role gating). Status corrected to a
+      computed read-model (not a stored column) before code, logged inline
+      in §15 and in `docs/03-build-log.md`.
+- [x] Phase 13: Part/inventory-master entity + "add new part" form + QR
+      generation (`/parts`), PO status/lifecycle computed read-model + PO
+      detail/timeline page (`/po`, `/po/[id]`), sender-scan step
+      (`/api/simulate-scan-part`) feeding the existing classify/receive
+      flow, damage evidence (text and/or photo, required when
+      `damaged > 0`) on Receipt, and §10 role gating shelved (session
+      still required, role check removed) for single-account demo. Built
+      and verified — see `dev-docs/phase-13-v3-lifecycle-rebuild.md`.
+      Awaiting Zakaria's review.
+
+Explicit future work (post-hackathon, not this phase): re-add role
+separation + accounts management, audit trail, security hardening, more
+KPIs, AI-assisted review/automation of the reconciliation workflow.
 
 Explicit future work (not built in this phase, goes into the Wolf handoff's
 "next integration"): real scanner hardware, real supplier/accounting/EDI

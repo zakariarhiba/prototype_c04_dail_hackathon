@@ -1,16 +1,23 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useSession } from "./lib/useSession";
 
 export default function LandingPage() {
+  const { user, loading } = useSession();
+  const homeHref = user ? "/dashboard" : "/login";
+  const homeLabel = loading ? "..." : user ? "Back to dashboard" : "Log in";
+
   return (
     <div className="landing-page">
       <header className="landing-header">
         <span className="landing-header__brand" data-dockline-logo-target>
-          <Image src="/trast-mark.png" alt="" width={26} height={26} />
-          trast
+          <Image src="/trast-mark.png" alt="" width={34} height={34} />
+          Trast Dockline
         </span>
-        <Link href="/login" className="bouton">
-          Log in
+        <Link href={homeHref} className="bouton">
+          {homeLabel}
         </Link>
       </header>
 
@@ -27,8 +34,8 @@ export default function LandingPage() {
             and reconciles automatically, but never writes anything without a
             human confirming it first.
           </p>
-          <Link href="/login" className="bouton landing-hero__cta">
-            Log in to try it
+          <Link href={homeHref} className="bouton landing-hero__cta">
+            {user ? "Back to dashboard" : "Log in to try it"}
           </Link>
           <div className="landing-hero__image">
             <Image

@@ -6,9 +6,8 @@ export async function POST(request: Request) {
   if (!session) {
     return Response.json({ ok: false, error: "Not signed in." }, { status: 401 });
   }
-  if (session.role !== "clerk") {
-    return Response.json({ ok: false, error: "Only a parts receiving lead can add stock." }, { status: 403 });
-  }
+  // v3 (§15): single-account scope — role check shelved, not deleted (see
+  // §15's note; §10's clerk/approver split stays in code, just unenforced).
 
   const body = await request.json();
   try {

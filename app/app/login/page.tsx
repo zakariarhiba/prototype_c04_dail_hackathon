@@ -43,7 +43,7 @@ export default function LoginPage() {
       />
       <div className="login-screen__visual">
         <div className="login-screen__visual-text">
-          <h1>trast</h1>
+          <h1>Trast Dockline</h1>
           <p>Case C04 &middot; delivery vs. invoice reconciliation, synthetic data.</p>
         </div>
       </div>

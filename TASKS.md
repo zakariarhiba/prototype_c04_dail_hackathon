@@ -11,19 +11,36 @@ this as work happens; don't let status live only in chat history. One task
       real-vs-simulated split.
 - [x] Log client-interview questions and the assumptions we're using in
       place of real answers (`docs/02-client-interview.md`).
-- [ ] Review v1's `app/app/lib/store.ts` line by line against
-      `docs/01-system-design.md` and note every place they diverge.
+- [x] Review v1's `app/app/lib/store.ts` line by line against
+      `docs/01-system-design.md` and note every place they diverge. Result:
+      no divergence found. `classifyScan` (store.ts:199-270) matches §4's
+      heuristic exactly (no-DN→NEW, exact-match+PO-covered→DUPLICATE,
+      exact-match+PO-not-covered→AMBIGUOUS, overshoot→AMBIGUOUS,
+      else→NEW). `simulateIncomingInvoice`/reconciliation (store.ts:411-466)
+      matches §5: sums `accepted` (not `received`) per DN, builds one
+      evidence line per DN. The confirm/approve gates (store.ts:312-380,
+      474-517) match §3: nothing is written to Postgres until
+      `confirmReceipt`/`approveDiscrepancyNotice` is called. The one design
+      area store.ts correctly does *not* implement — real auth — was §8's
+      explicit non-goal in v1; see §10 for v2's change to that.
 - [x] Decide: keep the Next.js app shell from v1, or restart the app from
       scratch against the new design? Decision: keep the Next.js shell,
       restyled to match the mandated design system (see
       `docs/01-system-design.md` §9 and the build log).
-- [ ] Resolve or explicitly time-box the open questions in
+- [x] Resolve or explicitly time-box the open questions in
       `docs/01-system-design.md` §7 — each one needs either a real answer or
-      a stated assumption before build starts.
+      a stated assumption before build starts. Resolution: no real client
+      to ask (per `context/brief.md`), so all six stay as the stated
+      assumptions already logged in `docs/02-client-interview.md` — time-
+      boxed as "assumption stands until real data/feedback contradicts it,"
+      not re-litigated per build phase.
 - [x] Record the event's mandated tool stack (Claude Code, Next.js,
       LangGraph, Python, Supabase, Gemini) and how deep each is integrated —
       `docs/01-system-design.md` §9.
-- [ ] Sign off: design doc reviewed, ready to move to Phase 2.
+- [x] Sign off: design doc reviewed, ready to move to Phase 2. v2 addendum
+      (§10-§13: auth/session, inventory ledger, alarms, KPIs) added
+      2026-09-17, pending Zakaria's explicit go-ahead before phase-10 code
+      starts — see `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
 
 ## Phase 2 — Build
 
@@ -58,7 +75,33 @@ Not started.
 
 ## Phase 4 — Presentation
 
-Not started.
+Not started. Runs in parallel with Phase 5, not strictly after it — see
+`dev-docs/phase-09-design-v2-auth-inventory-kpis.md` for the full
+parallel-track plan.
 
 - [ ] Write and time the 3-minute script (`docs/06-presentation-script.md`).
 - [ ] Dry run once against the actual demo, not just the script.
+
+## Phase 5 — v2: real auth, inventory ledger, alarms, KPIs
+
+Design doc updated (§10-§13); awaiting Zakaria's sign-off before phase-10
+code starts. See `dev-docs/phase-09-design-v2-auth-inventory-kpis.md`.
+
+- [x] `docs/01-system-design.md` §10-§13 written (auth/session, inventory
+      ledger, alarm thresholds, KPI definitions), §6 and §8 updated to
+      match.
+- [ ] Phase 10: real auth/session (clerk vs approver), fixes the
+      localStorage-only login bug and the unlinked clerk/approver name
+      fields.
+- [ ] Phase 11: inventory ledger (derived from receipts) + "add new stock"
+      write.
+- [ ] Phase 12: low-stock/rupture alarms over the ledger.
+- [ ] Phase 13: KPIs (discrepancy rate, damage rate, time-to-reconcile).
+- [ ] Phase 14 (optional/fold-in): relabel simulate-scan/invoice buttons as
+      an explicit QR/barcode-trigger equivalent — cosmetic only.
+
+Explicit future work (not built in this phase, goes into the Wolf handoff's
+"next integration"): real scanner hardware, real supplier/accounting/EDI
+integration, multi-user concurrency, multi-part DNs/partial invoices, auth
+hardening (password reset/SSO/rate limiting), alarm-to-action workflow and
+real notifications, configurable per-part thresholds, KPI history/trending.

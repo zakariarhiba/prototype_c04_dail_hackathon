@@ -108,8 +108,15 @@ and rejected on DN-1, not credited on the invoice").
 - The incoming scan / incoming invoice events themselves (no real scanner or
   accounting feed).
 - The discrepancy notice's delivery (generated and shown, never sent).
-- Identity (free-text name, not a real auth system, including the cosmetic
-  login screen added on top of the Next.js UI).
+
+**Real as of v2 (see §10-§13):**
+- Identity and session (§10) — was simulated (free-text name, cosmetic
+  login) in v1, now a real server-enforced session. Still not real identity
+  verification (no password recovery, no SSO) — see §10's own caveat.
+- Inventory ledger (§11) — real, computed from confirmed receipts.
+- Low-stock/rupture alarms (§12) — real computed state, but display-only:
+  no notification channel exists, so an alarm is not itself an action.
+- KPIs (§13) — real, computed live from Postgres on every read.
 
 **LLM-generated narrative — built, then paused (see §9):** a small
 Python/LangGraph service calling Gemini was built to turn already-computed
@@ -174,5 +181,102 @@ during build — tracked in `02-client-interview.md`:
   docker-compose, a reset endpoint that truncates and reseeds, single
   process. Persistence itself is real (see §9), just not hardened.
 - No multi-user concurrency handling.
-- No real authentication.
 - No multi-part delivery notes or partial invoices.
+
+(Removed: "no real authentication" — superseded by §10. v2 does add a real
+server-enforced session; what's still a non-goal is *identity verification*
+beyond that: no password recovery, no SSO, no rate limiting, no audit-grade
+session logging. See §10's caveat and the future-work list in the v2
+execution plan.)
+
+## 10. Auth / session model (v2)
+
+Closes the "no real authentication" non-goal above and interview Q6
+(`02-client-interview.md`: "assumed distinct role, no real auth enforcing
+it"). v1's login was `localStorage.setItem("c04_user_name", ...)` with no
+server session, no cookie, and no route protection — any API route was
+callable with zero identity. Concretely, that bug also meant the name typed
+at login never carried into the `clerk_name` / `approved_by` fields on the
+receiving/invoice screens (three independent, unlinked pieces of client
+state) — those screens showed generic defaults ("Clerk on duty") instead.
+
+- **Roles:** exactly two, matching §1's actors — `clerk`, `approver`. No
+  admin/other role; no self-service role switching.
+- **Users:** a new `users` table (`id`, `name`, `role`, `password_hash`),
+  seeded by `resetState()` alongside orders/DNs so the "repeatable start
+  state" handover requirement still holds after login becomes real. Seed
+  credentials are demo values, documented in the README, not secret.
+- **Session:** a signed, HTTP-only cookie set on successful login (e.g. via
+  `iron-session` or an equivalent minimal signed-cookie approach). No OAuth,
+  no SSO — explicitly out of scope. This is real *session enforcement*, not
+  real *identity verification*: no password strength policy, no recovery
+  flow, no rate limiting, no audit-grade session logging (see §8).
+- **Route/API gating:** `confirm-receipt` requires `role=clerk`;
+  `approve-notice` requires `role=approver`; dashboard/read endpoints are
+  open to either authenticated role. A role mismatch returns 403 and is
+  shown as a real error, not a silently hidden button — the brief's
+  "ambiguous cases must not have a default" spirit extends to "don't fake a
+  permission check client-side only."
+- **What's still simulated:** nothing in this section — this is the one
+  area moving from simulated to real between v1 and v2. The §6 table above
+  reflects that explicitly so it isn't miscategorized as another
+  simulated-and-labeled input.
+
+## 11. Inventory ledger (v2)
+
+A new **read-model**, not a new source of truth. `InventoryLedgerLine`:
+`part`, `on_hand_accepted`, `last_movement_at`.
+
+- **Derivation:** `on_hand_accepted = SUM(receipts.accepted)` grouped by
+  `part` via `delivery_notes`. Computed on every read (a query, not a
+  separately maintained counter) — this avoids double bookkeeping and any
+  chance of the ledger drifting from the receipts it's built from.
+- **What it is not:** a real warehouse inventory count. This system has no
+  putaway, pick, or consumption events — only "cumulative accepted quantity
+  received to date, per part." The UI must label it accordingly (e.g.
+  "Received-to-date by part"), never "stock on hand," to avoid implying a
+  real WMS exists behind it.
+- **"Add new stock":** a clerk creating a new PO/DN is a real write, but
+  only to this app's own `orders`/`delivery_notes` tables — it extends the
+  existing clerk-confirm write path from §3, not a new external
+  integration. It never touches a real supplier or inventory-of-record
+  system, per the brief's non-negotiable constraint.
+- **Known limitation carried over from §8:** the ledger assumes one part per
+  delivery note, same as classification/reconciliation. Multi-part DNs stay
+  out of scope; don't relax that assumption here while it's still a
+  non-goal everywhere else.
+
+## 12. Alarm thresholds (v2)
+
+A low-stock/"rupture" indicator computed over §11's ledger.
+
+- **Rule:** `on_hand_accepted < threshold`, where `threshold` is a fixed
+  percentage of the part's original PO quantity (e.g. 20%). Chosen over a
+  per-part configurable threshold to avoid a new admin-UI surface within
+  hackathon time; a configurable threshold is future work (see handoff).
+- **What it is:** a computed, displayed badge/banner state only — no write,
+  no notification (no email/SMS/webhook exists in this system). An alarm
+  firing is visibility, not an action, and the UI copy must say so plainly
+  ("visible on this dashboard only") so it can't be mistaken for a sent
+  alert.
+- **What happens when it fires:** nothing is required by the brief beyond
+  visibility. No reorder-approval workflow is built for v2 — that's future
+  work, not an implicit promise.
+
+## 13. KPI definitions (v2)
+
+Computed live from Postgres on every dashboard read, same "real, computed
+logic" framing already used for classification (§4) and reconciliation
+(§5) — never cached or precomputed.
+
+- **Discrepancy rate:** `count(discrepancy_notices) / count(invoices
+  reconciled)`, over all confirmed invoices to date.
+- **Damage rate:** `sum(receipts.damaged) / sum(receipts.received)`.
+- **Time-to-reconcile:** scoped down to **approve-click to notice** only
+  (i.e. effectively near-zero/instant in this build), not "invoice arrival
+  to notice." Reason: `PendingInvoiceReview` (an invoice becoming pending)
+  is in-memory only, per §9's "no write before confirm" rule — there is no
+  persisted timestamp for "when the invoice arrived" to measure from
+  without adding a durable field to something that's deliberately not
+  durable. Adding that timestamp is listed as future work rather than
+  breaking the in-memory-pending design for the sake of one KPI.

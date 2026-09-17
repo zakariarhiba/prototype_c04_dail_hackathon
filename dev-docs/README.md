@@ -29,6 +29,7 @@ phase doc, stop, wait for an explicit yes before starting the next one.
 | 6 | [phase-06-pending-clobber-guard.md](phase-06-pending-clobber-guard.md) | Fixed silent pending-scan/invoice clobbering, black favicon, dev-mode indicator badge | Awaiting review |
 | 7 | [phase-07-brand-assets.md](phase-07-brand-assets.md) | Generated Dockline logo/hero/login art and evidence schemas wired in, transparent-icon fix, Makefile | Awaiting review |
 | 8 | [phase-08-immersive-transitions.md](phase-08-immersive-transitions.md) | Splash entry animation, login/logout transition overlays, route progress bar | Awaiting review |
+| 9 | [phase-09-design-v2-auth-inventory-kpis.md](phase-09-design-v2-auth-inventory-kpis.md) | Design doc update only: real auth/session, inventory ledger, alarms, KPIs (§10-§13); no app code yet | Awaiting review |
 
 Phases 1-4 are written retroactively (the workflow below didn't exist yet
 when they were built) — flagged here so review can catch up before any new

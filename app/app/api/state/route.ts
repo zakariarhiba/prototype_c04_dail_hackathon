@@ -1,7 +1,7 @@
 import { getState } from "@/app/lib/store";
 
 export async function GET() {
-  const s = getState();
+  const s = await getState();
   return Response.json({
     orders: s.orders,
     deliveryNotes: s.deliveryNotes,

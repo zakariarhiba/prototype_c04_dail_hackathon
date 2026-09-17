@@ -1,10 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import { ensureSchema, getPool, nextId } from "./db";
 import type {
   Order,
   DeliveryNote,
   Receipt,
-  Invoice,
   PendingScan,
   DiscardedDuplicate,
   PendingInvoiceReview,
@@ -15,15 +15,17 @@ import type {
 
 // ---------------------------------------------------------------------------
 // Seed data is read (never written) from ./context/initial.json, the source
-// of truth provided for this exercise. Everything below this seed is
-// in-memory only and resets on server restart or via POST /api/reset.
+// of truth provided for this exercise. Confirmed state (delivery notes,
+// receipts, discarded duplicates, discrepancy notices) lives in Postgres —
+// see docs/01-system-design.md §9 — and survives server restarts. A pending
+// scan/invoice is a system *proposal*, not yet written per the "no write
+// before confirm" rule (§3), so it stays in memory only.
 // ---------------------------------------------------------------------------
 
 type SeedData = {
   orders: Order[];
   delivery_notes: { id: string; order_id: string; part: string; listed_quantity: number }[];
   receipts: Receipt[];
-  invoices: { id: string; delivery_notes: string[]; part: string; quantity: number }[];
 };
 
 function loadSeed(): SeedData {
@@ -31,20 +33,6 @@ function loadSeed(): SeedData {
   const raw = fs.readFileSync(seedPath, "utf-8");
   return JSON.parse(raw) as SeedData;
 }
-
-export type AppState = {
-  orders: Order[];
-  deliveryNotes: DeliveryNote[];
-  receipts: Receipt[];
-  invoices: Invoice[]; // invoices already known at seed time (unused by simulate flow, kept for reference)
-  discardedDuplicates: DiscardedDuplicate[];
-  notices: DiscrepancyNotice[];
-  pendingScan: PendingScan | null;
-  pendingInvoice: PendingInvoiceReview | null;
-  scanScenarioIndex: number;
-  invoiceScenarioIndex: number;
-  idCounter: number;
-};
 
 // NOTE (disclosed): initial.json defines exactly one order, PO-1, which
 // arrives already fully split-delivered (DN-1 + DN-2 = 10 of 10) in the seed
@@ -55,48 +43,115 @@ export type AppState = {
 // verbatim.
 const DEMO_ADDED_ORDER: Order = { id: "PO-2", part: "BRAKE-PAD-Y", quantity: 5 };
 
-function freshState(): AppState {
-  const seed = loadSeed();
+type PendingMemory = {
+  pendingScan: PendingScan | null;
+  pendingInvoice: PendingInvoiceReview | null;
+  scanScenarioIndex: number;
+  invoiceScenarioIndex: number;
+};
+
+// Survives Next.js dev hot-reload by stashing on globalThis, same as the DB
+// pool in ./db.ts.
+const g = globalThis as unknown as { __c04Pending?: PendingMemory };
+function pendingMemory(): PendingMemory {
+  if (!g.__c04Pending) {
+    g.__c04Pending = {
+      pendingScan: null,
+      pendingInvoice: null,
+      scanScenarioIndex: 0,
+      invoiceScenarioIndex: 0,
+    };
+  }
+  return g.__c04Pending;
+}
+
+export type AppState = {
+  orders: Order[];
+  deliveryNotes: DeliveryNote[];
+  receipts: Receipt[];
+  discardedDuplicates: DiscardedDuplicate[];
+  notices: DiscrepancyNotice[];
+  pendingScan: PendingScan | null;
+  pendingInvoice: PendingInvoiceReview | null;
+};
+
+export async function getState(): Promise<AppState> {
+  await ensureSchema();
+  const pool = getPool();
+  const [orders, deliveryNotes, receipts, discardedDuplicates, notices] = await Promise.all([
+    pool.query<Order>("select id, part, quantity from orders order by id"),
+    pool.query<DeliveryNote>(
+      "select id, order_id, part, listed_quantity, logged_via from delivery_notes order by id"
+    ),
+    pool.query<Receipt>(
+      "select id, delivery_note, received, damaged, accepted from receipts order by id"
+    ),
+    pool.query<DiscardedDuplicate>(
+      "select scan_id, order_id, part, listed_quantity, matched_delivery_note, confirmed_by_clerk_at from discarded_duplicates order by confirmed_by_clerk_at"
+    ),
+    pool.query<DiscrepancyNotice>(
+      "select id, invoice_id, order_id, part, invoiced_quantity, accepted_total, discrepancy, evidence, approved_by, approved_at, simulated from discrepancy_notices order by approved_at"
+    ),
+  ]);
+  const mem = pendingMemory();
   return {
-    orders: [...seed.orders.map((o) => ({ ...o })), { ...DEMO_ADDED_ORDER }],
-    deliveryNotes: seed.delivery_notes.map((dn) => ({ ...dn, logged_via: "seed" as const })),
-    receipts: seed.receipts.map((r) => ({ ...r })),
-    invoices: seed.invoices.map((i) => ({ ...i, order_id: findOrderForDN(seed, i.delivery_notes[0]) })),
-    discardedDuplicates: [],
-    notices: [],
+    orders: orders.rows,
+    deliveryNotes: deliveryNotes.rows,
+    receipts: receipts.rows,
+    discardedDuplicates: discardedDuplicates.rows,
+    notices: notices.rows,
+    pendingScan: mem.pendingScan,
+    pendingInvoice: mem.pendingInvoice,
+  };
+}
+
+export async function resetState(): Promise<void> {
+  await ensureSchema();
+  const pool = getPool();
+  const seed = loadSeed();
+
+  await pool.query("begin");
+  try {
+    await pool.query(
+      "truncate discrepancy_notices, discarded_duplicates, receipts, delivery_notes, orders, counters"
+    );
+    for (const o of [...seed.orders, DEMO_ADDED_ORDER]) {
+      await pool.query("insert into orders (id, part, quantity) values ($1, $2, $3)", [
+        o.id,
+        o.part,
+        o.quantity,
+      ]);
+    }
+    for (const dn of seed.delivery_notes) {
+      await pool.query(
+        "insert into delivery_notes (id, order_id, part, listed_quantity, logged_via) values ($1, $2, $3, $4, 'seed')",
+        [dn.id, dn.order_id, dn.part, dn.listed_quantity]
+      );
+    }
+    for (const r of seed.receipts) {
+      await pool.query(
+        "insert into receipts (id, delivery_note, received, damaged, accepted) values ($1, $2, $3, $4, $5)",
+        [r.id, r.delivery_note, r.received, r.damaged, r.accepted]
+      );
+    }
+    // Seed IDs are fixed strings (DN-1, DN-2, RC-1, RC-2, ...) from
+    // initial.json, not generated by nextId(). Start each prefix's counter
+    // past however many the seed already used, so a freshly generated DN-1
+    // never collides with the seed's own DN-1.
+    await pool.query("insert into counters (key, value) values ('DN', $1)", [seed.delivery_notes.length]);
+    await pool.query("insert into counters (key, value) values ('RC', $1)", [seed.receipts.length]);
+    await pool.query("commit");
+  } catch (err) {
+    await pool.query("rollback");
+    throw err;
+  }
+
+  g.__c04Pending = {
     pendingScan: null,
     pendingInvoice: null,
     scanScenarioIndex: 0,
     invoiceScenarioIndex: 0,
-    idCounter: 1,
   };
-}
-
-function findOrderForDN(seed: SeedData, dnId: string): string {
-  const dn = seed.delivery_notes.find((d) => d.id === dnId);
-  return dn ? dn.order_id : seed.orders[0]?.id ?? "PO-1";
-}
-
-// Survive Next.js dev hot-reload by stashing state on globalThis.
-const g = globalThis as unknown as { __c04Store?: AppState };
-if (!g.__c04Store) {
-  g.__c04Store = freshState();
-}
-
-export function getState(): AppState {
-  return g.__c04Store!;
-}
-
-export function resetState(): AppState {
-  g.__c04Store = freshState();
-  return g.__c04Store;
-}
-
-function nextId(prefix: string): string {
-  const s = getState();
-  const id = `${prefix}-${s.idCounter}`;
-  s.idCounter += 1;
-  return id;
 }
 
 // ---------------------------------------------------------------------------
@@ -141,17 +196,20 @@ const SCAN_SCENARIOS: ScanScenario[] = [
   },
 ];
 
-function classifyScan(scenario: ScanScenario): {
+function classifyScan(
+  scenario: ScanScenario,
+  deliveryNotes: DeliveryNote[],
+  orders: Order[]
+): {
   classification: ScanClassification;
   confidence: "high" | "low";
   reasoning: string;
   matched_delivery_note: string | null;
 } {
-  const s = getState();
-  const existingForOrder = s.deliveryNotes.filter(
+  const existingForOrder = deliveryNotes.filter(
     (dn) => dn.order_id === scenario.order_id && dn.part === scenario.part
   );
-  const order = s.orders.find((o) => o.id === scenario.order_id);
+  const order = orders.find((o) => o.id === scenario.order_id);
   const orderedQty = order?.quantity ?? 0;
 
   const exactMatch = existingForOrder.find((dn) => dn.listed_quantity === scenario.listed_quantity);
@@ -211,14 +269,23 @@ function classifyScan(scenario: ScanScenario): {
   };
 }
 
-export function simulateIncomingScan(): PendingScan {
-  const s = getState();
-  const scenario = SCAN_SCENARIOS[s.scanScenarioIndex % SCAN_SCENARIOS.length];
-  s.scanScenarioIndex += 1;
+export async function simulateIncomingScan(): Promise<PendingScan> {
+  await ensureSchema();
+  const mem = pendingMemory();
+  const scenario = SCAN_SCENARIOS[mem.scanScenarioIndex % SCAN_SCENARIOS.length];
+  mem.scanScenarioIndex += 1;
 
-  const result = classifyScan(scenario);
+  const pool = getPool();
+  const [deliveryNotes, orders] = await Promise.all([
+    pool.query<DeliveryNote>(
+      "select id, order_id, part, listed_quantity, logged_via from delivery_notes"
+    ),
+    pool.query<Order>("select id, part, quantity from orders"),
+  ]);
+
+  const result = classifyScan(scenario, deliveryNotes.rows, orders.rows);
   const pending: PendingScan = {
-    scan_id: nextId("SCAN"),
+    scan_id: await nextId("SCAN"),
     order_id: scenario.order_id,
     part: scenario.part,
     listed_quantity: scenario.listed_quantity,
@@ -228,7 +295,7 @@ export function simulateIncomingScan(): PendingScan {
     matched_delivery_note: result.matched_delivery_note,
     scenario_label: scenario.label,
   };
-  s.pendingScan = pending;
+  mem.pendingScan = pending;
   return pending;
 }
 
@@ -237,19 +304,22 @@ export function simulateIncomingScan(): PendingScan {
 // new-vs-duplicate flag. Nothing below is written until this call happens.
 // ---------------------------------------------------------------------------
 
-export function confirmReceipt(input: {
+export async function confirmReceipt(input: {
   scan_id: string;
   decision: "NEW" | "DUPLICATE";
   received: number;
   damaged: number;
   accepted: number;
   clerk_name: string;
-}): { deliveryNote?: DeliveryNote; receipt?: Receipt; discarded?: DiscardedDuplicate } {
-  const s = getState();
-  const pending = s.pendingScan;
+}): Promise<{ deliveryNote?: DeliveryNote; receipt?: Receipt; discarded?: DiscardedDuplicate }> {
+  await ensureSchema();
+  const mem = pendingMemory();
+  const pending = mem.pendingScan;
   if (!pending || pending.scan_id !== input.scan_id) {
     throw new Error("No matching pending scan to confirm. It may have already been resolved.");
   }
+
+  const pool = getPool();
 
   if (input.decision === "DUPLICATE") {
     const discarded: DiscardedDuplicate = {
@@ -260,8 +330,18 @@ export function confirmReceipt(input: {
       matched_delivery_note: pending.matched_delivery_note,
       confirmed_by_clerk_at: new Date().toISOString(),
     };
-    s.discardedDuplicates.push(discarded);
-    s.pendingScan = null;
+    await pool.query(
+      "insert into discarded_duplicates (scan_id, order_id, part, listed_quantity, matched_delivery_note, confirmed_by_clerk_at) values ($1, $2, $3, $4, $5, $6)",
+      [
+        discarded.scan_id,
+        discarded.order_id,
+        discarded.part,
+        discarded.listed_quantity,
+        discarded.matched_delivery_note,
+        discarded.confirmed_by_clerk_at,
+      ]
+    );
+    mem.pendingScan = null;
     return { discarded };
   }
 
@@ -269,22 +349,28 @@ export function confirmReceipt(input: {
   // clerk confirmed (which may correct received/damaged/accepted from what
   // was scanned, and may override the system's suggested flag).
   const dn: DeliveryNote = {
-    id: nextId("DN"),
+    id: await nextId("DN"),
     order_id: pending.order_id,
     part: pending.part,
     listed_quantity: pending.listed_quantity,
     logged_via: "clerk_confirmed",
   };
   const receipt: Receipt = {
-    id: nextId("RC"),
+    id: await nextId("RC"),
     delivery_note: dn.id,
     received: input.received,
     damaged: input.damaged,
     accepted: input.accepted,
   };
-  s.deliveryNotes.push(dn);
-  s.receipts.push(receipt);
-  s.pendingScan = null;
+  await pool.query(
+    "insert into delivery_notes (id, order_id, part, listed_quantity, logged_via) values ($1, $2, $3, $4, $5)",
+    [dn.id, dn.order_id, dn.part, dn.listed_quantity, dn.logged_via]
+  );
+  await pool.query(
+    "insert into receipts (id, delivery_note, received, damaged, accepted) values ($1, $2, $3, $4, $5)",
+    [receipt.id, receipt.delivery_note, receipt.received, receipt.damaged, receipt.accepted]
+  );
+  mem.pendingScan = null;
   return { deliveryNote: dn, receipt };
 }
 
@@ -317,16 +403,23 @@ const INVOICE_SCENARIOS: InvoiceScenario[] = [
   },
 ];
 
-export function simulateIncomingInvoice(): PendingInvoiceReview {
-  const s = getState();
-  const scenario = INVOICE_SCENARIOS[s.invoiceScenarioIndex % INVOICE_SCENARIOS.length];
-  s.invoiceScenarioIndex += 1;
+export async function simulateIncomingInvoice(): Promise<PendingInvoiceReview> {
+  await ensureSchema();
+  const mem = pendingMemory();
+  const scenario = INVOICE_SCENARIOS[mem.invoiceScenarioIndex % INVOICE_SCENARIOS.length];
+  mem.invoiceScenarioIndex += 1;
 
-  const linkedDNs = s.deliveryNotes.filter(
-    (dn) => dn.order_id === scenario.order_id && dn.part === scenario.part
-  );
-  const evidence: EvidenceLine[] = linkedDNs.map((dn) => {
-    const receipt = s.receipts.find((r) => r.delivery_note === dn.id);
+  const pool = getPool();
+  const [deliveryNotes, receipts] = await Promise.all([
+    pool.query<DeliveryNote>(
+      "select id, order_id, part, listed_quantity, logged_via from delivery_notes where order_id = $1 and part = $2",
+      [scenario.order_id, scenario.part]
+    ),
+    pool.query<Receipt>("select id, delivery_note, received, damaged, accepted from receipts"),
+  ]);
+
+  const evidence: EvidenceLine[] = deliveryNotes.rows.map((dn) => {
+    const receipt = receipts.rows.find((r) => r.delivery_note === dn.id);
     const received = receipt?.received ?? 0;
     const damaged = receipt?.damaged ?? 0;
     const accepted = receipt?.accepted ?? 0;
@@ -348,7 +441,7 @@ export function simulateIncomingInvoice(): PendingInvoiceReview {
   const discrepancy = scenario.quantity - acceptedTotal;
 
   const pending: PendingInvoiceReview = {
-    invoice_id: nextId("INV"),
+    invoice_id: await nextId("INV"),
     order_id: scenario.order_id,
     part: scenario.part,
     invoiced_quantity: scenario.quantity,
@@ -358,26 +451,28 @@ export function simulateIncomingInvoice(): PendingInvoiceReview {
     scenario_label: scenario.label,
     clean: discrepancy === 0,
   };
-  s.pendingInvoice = pending;
+  mem.pendingInvoice = pending;
   return pending;
 }
 
 // ---------------------------------------------------------------------------
 // Step 6: human approval required before a discrepancy notice is generated.
-// The notice is simulated: it is stored locally and displayed, never sent.
+// The notice is simulated: it is stored (in Postgres) and displayed, never
+// actually sent anywhere.
 // ---------------------------------------------------------------------------
 
-export function approveDiscrepancyNotice(input: {
+export async function approveDiscrepancyNotice(input: {
   invoice_id: string;
   approved_by: string;
-}): DiscrepancyNotice {
-  const s = getState();
-  const pending = s.pendingInvoice;
+}): Promise<DiscrepancyNotice> {
+  await ensureSchema();
+  const mem = pendingMemory();
+  const pending = mem.pendingInvoice;
   if (!pending || pending.invoice_id !== input.invoice_id) {
     throw new Error("No matching pending invoice review to approve.");
   }
   const notice: DiscrepancyNotice = {
-    id: nextId("NOTICE"),
+    id: await nextId("NOTICE"),
     invoice_id: pending.invoice_id,
     order_id: pending.order_id,
     part: pending.part,
@@ -389,12 +484,28 @@ export function approveDiscrepancyNotice(input: {
     approved_at: new Date().toISOString(),
     simulated: true,
   };
-  s.notices.push(notice);
-  s.pendingInvoice = null;
+  await getPool().query(
+    `insert into discrepancy_notices
+      (id, invoice_id, order_id, part, invoiced_quantity, accepted_total, discrepancy, evidence, approved_by, approved_at, simulated)
+     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+    [
+      notice.id,
+      notice.invoice_id,
+      notice.order_id,
+      notice.part,
+      notice.invoiced_quantity,
+      notice.accepted_total,
+      notice.discrepancy,
+      JSON.stringify(notice.evidence),
+      notice.approved_by,
+      notice.approved_at,
+      notice.simulated,
+    ]
+  );
+  mem.pendingInvoice = null;
   return notice;
 }
 
 export function dismissPendingInvoice(): void {
-  const s = getState();
-  s.pendingInvoice = null;
+  pendingMemory().pendingInvoice = null;
 }

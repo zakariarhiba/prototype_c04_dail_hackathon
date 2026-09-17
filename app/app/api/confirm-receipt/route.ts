@@ -3,7 +3,7 @@ import { confirmReceipt } from "@/app/lib/store";
 export async function POST(request: Request) {
   const body = await request.json();
   try {
-    const result = confirmReceipt(body);
+    const result = await confirmReceipt(body);
     return Response.json({ ok: true, ...result });
   } catch (err) {
     return Response.json(

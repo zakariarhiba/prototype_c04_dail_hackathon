@@ -1,0 +1,12 @@
+# Python (narrative-service)
+__pycache__/
+*.pyc
+.venv/
+
+# Real env files with secrets — .example templates are tracked on purpose
+.env
+.env.local
+!*.env.example
+!.env.local.example
+
+.DS_Store

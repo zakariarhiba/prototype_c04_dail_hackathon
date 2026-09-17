@@ -1,57 +1,74 @@
 import Link from "next/link";
-import ResetButton from "./components/ResetButton";
+import { Logo } from "./components/Logo";
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-6">
-      <h1 className="text-2xl font-semibold">Delivery / Invoice Reconciliation — Prototype</h1>
-      <p className="text-neutral-600">
-        Case C04. The client&apos;s pain: at the loading bay they record what
-        arrived; later someone reconciles the invoice and cannot tell whether
-        a difference is a shortage, a damaged item, a duplicate scan, or a
-        second delivery. This prototype demonstrates a narrow slice of that
-        workflow end-to-end, with a human confirming every write.
-      </p>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Link
-          href="/receiving"
-          className="block border border-neutral-200 rounded-lg p-5 bg-white hover:border-blue-400"
-        >
-          <h2 className="font-semibold mb-1">1. Receiving</h2>
-          <p className="text-sm text-neutral-600">
-            Simulate an incoming delivery-note scan, see the system&apos;s
-            new-vs-duplicate flag with its reasoning, then confirm or correct
-            it as the receiving clerk.
-          </p>
+    <div className="landing-page">
+      <header className="landing-header">
+        <span className="landing-header__brand">
+          <Logo size={26} />
+          Dockline
+        </span>
+        <Link href="/login" className="bouton">
+          Log in
         </Link>
-        <Link
-          href="/invoices"
-          className="block border border-neutral-200 rounded-lg p-5 bg-white hover:border-blue-400"
-        >
-          <h2 className="font-semibold mb-1">2. Invoice reconciliation</h2>
-          <p className="text-sm text-neutral-600">
-            Simulate an incoming invoice, reconcile it against the sum of
-            accepted quantities across linked delivery notes, review the
-            evidence, and approve (or not) a simulated discrepancy notice.
+      </header>
+
+      <main className="landing-main">
+        <section className="landing-hero">
+          <p className="landing-hero__eyebrow">Case C04 &middot; synthetic exercise data</p>
+          <h1>The delivery arrived. The invoice tells a different story.</h1>
+          <p className="landing-hero__lede">
+            At the loading bay, a dealership parts team records what actually
+            arrived. Later, someone tries to reconcile the invoice against it
+            and can&apos;t tell whether a difference is a shortage, a damaged
+            item, a duplicate scan, or a second delivery. Dockline is a
+            narrow, working slice of that workflow: a system that classifies
+            and reconciles automatically, but never writes anything without a
+            human confirming it first.
           </p>
-        </Link>
-      </div>
+          <Link href="/login" className="bouton landing-hero__cta">
+            Log in to try it
+          </Link>
+        </section>
 
-      <div className="border border-amber-200 bg-amber-50 rounded-lg p-4 text-sm text-amber-900 space-y-2">
-        <p className="font-medium">What&apos;s real vs. simulated in this prototype</p>
-        <ul className="list-disc list-inside space-y-1">
-          <li>Real: new-vs-duplicate classification, computed from live state each time.</li>
-          <li>Real: invoice reconciliation math (sum of accepted, not received) and evidence trail.</li>
-          <li>Real: nothing is written to state without an explicit human confirmation/approval click.</li>
-          <li>Simulated: the incoming scan and incoming invoice events themselves (buttons, not a real scanner/EDI feed).</li>
-          <li>Simulated: the discrepancy notice — generated and displayed, never actually sent anywhere.</li>
-        </ul>
-      </div>
+        <section className="landing-grid">
+          <div className="carte">
+            <h2 className="font-semibold mb-1">1. Receiving</h2>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+              A delivery-note scan arrives (simulated). The system checks it
+              against open purchase orders and proposes new vs. duplicate vs.
+              ambiguous, computed fresh from live state every time, never a
+              scripted answer. A human clerk confirms or corrects it. Nothing
+              is written until they do.
+            </p>
+          </div>
+          <div className="carte">
+            <h2 className="font-semibold mb-1">2. Invoice reconciliation</h2>
+            <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
+              An invoice arrives (simulated). Dockline sums the accepted
+              quantity, not received, across every delivery note tied to that
+              order, and shows a line-by-line evidence trail for any gap. A
+              human approver signs off before a discrepancy notice is
+              generated, and that notice is simulated: displayed, never sent.
+            </p>
+          </div>
+        </section>
 
-      <div>
-        <ResetButton />
-      </div>
+        <section className="carte">
+          <h2 className="font-semibold mb-2">About this prototype</h2>
+          <ul className="list-disc list-inside space-y-1 text-sm">
+            <li>Real: classification and reconciliation, computed live from current state.</li>
+            <li>Real: the confirm/approve gate, nothing is written without it.</li>
+            <li>Simulated: the incoming scan/invoice events, the discrepancy notice&apos;s delivery, and this login screen (no real authentication).</li>
+            <li>
+              Full design rationale, open questions, and the build log live
+              in <code>docs/</code> and <code>dev-docs/</code> in the
+              repository.
+            </li>
+          </ul>
+        </section>
+      </main>
     </div>
   );
 }

@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import ResetButton from "../components/ResetButton";
+import ResetButton from "../../components/ResetButton";
 import type {
   DeliveryNote,
   DiscardedDuplicate,
   PendingScan,
   Receipt,
-} from "../lib/types";
+} from "../../lib/types";
 
 type StateResponse = {
   deliveryNotes: DeliveryNote[];
@@ -17,9 +17,9 @@ type StateResponse = {
 };
 
 const CLASSIFICATION_STYLE: Record<string, string> = {
-  NEW: "bg-green-100 text-green-800 border-green-300",
-  DUPLICATE: "bg-orange-100 text-orange-800 border-orange-300",
-  AMBIGUOUS: "bg-red-100 text-red-800 border-red-300",
+  NEW: "etiquette-statut--succes",
+  DUPLICATE: "etiquette-statut--attention",
+  AMBIGUOUS: "etiquette-statut--danger",
 };
 
 export default function ReceivingPage() {
@@ -86,15 +86,15 @@ export default function ReceivingPage() {
   const pending = state?.pendingScan ?? null;
 
   return (
-    <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
-      <div className="flex items-center justify-between">
+    <div className="space-y-8">
+      <div className="entete-page">
         <h1 className="text-xl font-semibold">Step 1-3: Receiving</h1>
         <ResetButton />
       </div>
 
-      <section className="border border-neutral-200 rounded-lg p-5 bg-white space-y-3">
+      <section className="carte space-y-3">
         <h2 className="font-medium">Incoming delivery note event</h2>
-        <p className="text-sm text-neutral-600">
+        <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
           This button is a labeled simulation: there is no real scanner
           wired up. Each click advances through a fixed rotation of three
           scenarios (ordinary new delivery, likely duplicate, and a
@@ -103,15 +103,11 @@ export default function ReceivingPage() {
           comes up <em>is</em> computed live from current state, not
           scripted per scenario.
         </p>
-        <button
-          onClick={simulateScan}
-          disabled={busy || !!pending}
-          className="px-4 py-2 rounded bg-blue-600 text-white text-sm font-medium disabled:opacity-50"
-        >
+        <button className="bouton" onClick={simulateScan} disabled={busy || !!pending}>
           {busy ? "Working..." : "Simulate incoming delivery note"}
         </button>
         {pending && (
-          <p className="text-xs text-neutral-500">
+          <p className="text-xs" style={{ color: "var(--color-text-muted)" }}>
             A scan is pending clerk confirmation below — resolve it before
             simulating another.
           </p>
@@ -119,32 +115,35 @@ export default function ReceivingPage() {
       </section>
 
       {pending && (
-        <section className="border border-neutral-200 rounded-lg p-5 bg-white space-y-4">
+        <section className="carte space-y-4">
           <h2 className="font-medium">System check against open POs</h2>
-          <p className="text-xs text-neutral-500 italic">{pending.scenario_label}</p>
+          <p className="text-xs italic" style={{ color: "var(--color-text-muted)" }}>
+            {pending.scenario_label}
+          </p>
 
-          <div className="text-sm grid grid-cols-2 gap-2 sm:grid-cols-4 bg-neutral-50 rounded p-3">
+          <div
+            className="text-sm grid grid-cols-2 gap-2 sm:grid-cols-4 rounded p-3"
+            style={{ background: "var(--color-bg)" }}
+          >
             <div>
-              <div className="text-neutral-500">Scan ID</div>
+              <div style={{ color: "var(--color-text-muted)" }}>Scan ID</div>
               <div className="font-mono">{pending.scan_id}</div>
             </div>
             <div>
-              <div className="text-neutral-500">PO</div>
+              <div style={{ color: "var(--color-text-muted)" }}>PO</div>
               <div className="font-mono">{pending.order_id}</div>
             </div>
             <div>
-              <div className="text-neutral-500">Part</div>
+              <div style={{ color: "var(--color-text-muted)" }}>Part</div>
               <div className="font-mono">{pending.part}</div>
             </div>
             <div>
-              <div className="text-neutral-500">Listed qty</div>
+              <div style={{ color: "var(--color-text-muted)" }}>Listed qty</div>
               <div className="font-mono">{pending.listed_quantity}</div>
             </div>
           </div>
 
-          <div
-            className={`border rounded p-3 text-sm ${CLASSIFICATION_STYLE[pending.system_classification]}`}
-          >
+          <div className={`message ${CLASSIFICATION_STYLE[pending.system_classification]}`}>
             <div className="font-semibold mb-1">
               System flag: {pending.system_classification}
               {pending.system_confidence === "low" && " (low confidence)"}
@@ -161,28 +160,18 @@ export default function ReceivingPage() {
           <div className="space-y-3">
             <h3 className="font-medium text-sm">Clerk confirmation (required before anything is saved)</h3>
 
-            <div>
-              <label className="text-sm text-neutral-600 block mb-1">
-                Confirm or correct the flag:
-              </label>
+            <div className="champ">
+              <label>Confirm or correct the flag:</label>
               <div className="flex gap-2">
                 <button
                   onClick={() => setDecision("NEW")}
-                  className={`px-3 py-1.5 rounded border text-sm ${
-                    decision === "NEW"
-                      ? "bg-green-600 text-white border-green-600"
-                      : "border-neutral-300"
-                  }`}
+                  className={decision === "NEW" ? "bouton" : "bouton bouton--secondaire"}
                 >
                   New delivery
                 </button>
                 <button
                   onClick={() => setDecision("DUPLICATE")}
-                  className={`px-3 py-1.5 rounded border text-sm ${
-                    decision === "DUPLICATE"
-                      ? "bg-orange-600 text-white border-orange-600"
-                      : "border-neutral-300"
-                  }`}
+                  className={decision === "DUPLICATE" ? "bouton" : "bouton bouton--secondaire"}
                 >
                   Duplicate scan (discard)
                 </button>
@@ -190,130 +179,121 @@ export default function ReceivingPage() {
             </div>
 
             {decision === "NEW" && (
-              <div className="grid grid-cols-3 gap-3 max-w-md">
-                <label className="text-sm">
-                  Received
+              <div className="champ-groupe max-w-md">
+                <div className="champ">
+                  <label>Received</label>
                   <input
                     type="number"
-                    className="mt-1 w-full border border-neutral-300 rounded px-2 py-1"
                     value={received}
                     onChange={(e) => setReceived(Number(e.target.value))}
                   />
-                </label>
-                <label className="text-sm">
-                  Damaged
+                </div>
+                <div className="champ">
+                  <label>Damaged</label>
                   <input
                     type="number"
-                    className="mt-1 w-full border border-neutral-300 rounded px-2 py-1"
                     value={damaged}
                     onChange={(e) => setDamaged(Number(e.target.value))}
                   />
-                </label>
-                <label className="text-sm">
-                  Accepted
+                </div>
+                <div className="champ">
+                  <label>Accepted</label>
                   <input
                     type="number"
-                    className="mt-1 w-full border border-neutral-300 rounded px-2 py-1"
                     value={accepted}
                     onChange={(e) => setAccepted(Number(e.target.value))}
                   />
-                </label>
+                </div>
               </div>
             )}
 
             {decision === "DUPLICATE" && (
-              <p className="text-sm text-neutral-600">
+              <p className="text-sm" style={{ color: "var(--color-text-muted)" }}>
                 Confirming this as a duplicate discards the scan — no new
                 delivery note or receipt is created. The discard itself is
                 logged for audit.
               </p>
             )}
 
-            <label className="text-sm block max-w-xs">
-              Clerk name
-              <input
-                className="mt-1 w-full border border-neutral-300 rounded px-2 py-1"
-                value={clerkName}
-                onChange={(e) => setClerkName(e.target.value)}
-              />
-            </label>
+            <div className="champ max-w-xs">
+              <label>Clerk name</label>
+              <input value={clerkName} onChange={(e) => setClerkName(e.target.value)} />
+            </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
+            {error && <p className="text-sm" style={{ color: "var(--color-erreur-text)" }}>{error}</p>}
 
-            <button
-              onClick={submitConfirmation}
-              disabled={busy || !decision}
-              className="px-4 py-2 rounded bg-neutral-900 text-white text-sm font-medium disabled:opacity-50"
-            >
+            <button className="bouton bouton--sombre" onClick={submitConfirmation} disabled={busy || !decision}>
               {busy ? "Saving..." : "Confirm"}
             </button>
           </div>
         </section>
       )}
 
-      <section className="border border-neutral-200 rounded-lg p-5 bg-white space-y-4">
+      <section className="carte space-y-4">
         <h2 className="font-medium">Current state</h2>
 
         <div>
           <h3 className="text-sm font-medium mb-2">Delivery notes logged</h3>
-          <table className="w-full text-sm border-collapse">
-            <thead>
-              <tr className="text-left text-neutral-500 border-b">
-                <th className="py-1 pr-4">DN</th>
-                <th className="py-1 pr-4">PO</th>
-                <th className="py-1 pr-4">Part</th>
-                <th className="py-1 pr-4">Listed qty</th>
-                <th className="py-1 pr-4">Received / Damaged / Accepted</th>
-                <th className="py-1 pr-4">Logged via</th>
-              </tr>
-            </thead>
-            <tbody>
-              {state?.deliveryNotes.map((dn) => {
-                const r = state.receipts.find((r) => r.delivery_note === dn.id);
-                return (
-                  <tr key={dn.id} className="border-b border-neutral-100">
-                    <td className="py-1 pr-4 font-mono">{dn.id}</td>
-                    <td className="py-1 pr-4 font-mono">{dn.order_id}</td>
-                    <td className="py-1 pr-4">{dn.part}</td>
-                    <td className="py-1 pr-4">{dn.listed_quantity}</td>
-                    <td className="py-1 pr-4">
-                      {r ? `${r.received} / ${r.damaged} / ${r.accepted}` : "(no receipt)"}
-                    </td>
-                    <td className="py-1 pr-4 text-neutral-500">{dn.logged_via}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          <div className="tableau-conteneur tableau-conteneur--carte">
+            <table className="tableau">
+              <thead>
+                <tr>
+                  <th>DN</th>
+                  <th>PO</th>
+                  <th>Part</th>
+                  <th>Listed qty</th>
+                  <th>Received / Damaged / Accepted</th>
+                  <th>Logged via</th>
+                </tr>
+              </thead>
+              <tbody>
+                {state?.deliveryNotes.map((dn) => {
+                  const r = state.receipts.find((r) => r.delivery_note === dn.id);
+                  return (
+                    <tr key={dn.id}>
+                      <td className="font-mono">{dn.id}</td>
+                      <td className="font-mono">{dn.order_id}</td>
+                      <td>{dn.part}</td>
+                      <td>{dn.listed_quantity}</td>
+                      <td>{r ? `${r.received} / ${r.damaged} / ${r.accepted}` : "(no receipt)"}</td>
+                      <td style={{ color: "var(--color-text-muted)" }}>{dn.logged_via}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         {state && state.discardedDuplicates.length > 0 && (
           <div>
             <h3 className="text-sm font-medium mb-2">Discarded duplicate scans (audit log)</h3>
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="text-left text-neutral-500 border-b">
-                  <th className="py-1 pr-4">Scan</th>
-                  <th className="py-1 pr-4">PO / Part</th>
-                  <th className="py-1 pr-4">Matched DN</th>
-                  <th className="py-1 pr-4">Confirmed at</th>
-                </tr>
-              </thead>
-              <tbody>
-                {state.discardedDuplicates.map((d) => (
-                  <tr key={d.scan_id} className="border-b border-neutral-100">
-                    <td className="py-1 pr-4 font-mono">{d.scan_id}</td>
-                    <td className="py-1 pr-4">
-                      {d.order_id} / {d.part}
-                    </td>
-                    <td className="py-1 pr-4 font-mono">{d.matched_delivery_note ?? "-"}</td>
-                    <td className="py-1 pr-4 text-neutral-500">
-                      {new Date(d.confirmed_by_clerk_at).toLocaleTimeString()}
-                    </td>
+            <div className="tableau-conteneur tableau-conteneur--carte">
+              <table className="tableau">
+                <thead>
+                  <tr>
+                    <th>Scan</th>
+                    <th>PO / Part</th>
+                    <th>Matched DN</th>
+                    <th>Confirmed at</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {state.discardedDuplicates.map((d) => (
+                    <tr key={d.scan_id}>
+                      <td className="font-mono">{d.scan_id}</td>
+                      <td>
+                        {d.order_id} / {d.part}
+                      </td>
+                      <td className="font-mono">{d.matched_delivery_note ?? "-"}</td>
+                      <td style={{ color: "var(--color-text-muted)" }}>
+                        {new Date(d.confirmed_by_clerk_at).toLocaleTimeString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </section>

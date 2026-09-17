@@ -1,6 +1,6 @@
 import { simulateIncomingInvoice } from "@/app/lib/store";
 
 export async function POST() {
-  const pending = simulateIncomingInvoice();
+  const pending = await simulateIncomingInvoice();
   return Response.json(pending);
 }

@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: c04
+      POSTGRES_PASSWORD: c04
+      POSTGRES_DB: c04
+    ports:
+      # Host port 5433, not the default 5432, so this doesn't collide with a
+      # Postgres already running locally for other projects.
+      - "5433:5432"
+    volumes:
+      - c04-postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U c04 -d c04"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  c04-postgres-data:

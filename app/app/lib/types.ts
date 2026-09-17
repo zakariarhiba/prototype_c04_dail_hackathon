@@ -20,14 +20,6 @@ export type Receipt = {
   accepted: number;
 };
 
-export type Invoice = {
-  id: string;
-  order_id: string;
-  delivery_notes: string[];
-  part: string;
-  quantity: number;
-};
-
 export type ScanClassification = "NEW" | "DUPLICATE" | "AMBIGUOUS";
 
 export type PendingScan = {

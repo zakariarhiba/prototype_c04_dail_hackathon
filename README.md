@@ -1,8 +1,10 @@
-# C04 — Delivery Note / Invoice Reconciliation Prototype
+# Dockline — Delivery Note / Invoice Reconciliation Prototype
 
-Synthetic exercise (Dail Octopus, case C04). Not a real client, not connected
-to any real system. See `context/` for the source-of-truth brief, interview
-notes, and test data — that directory is not modified by the prototype.
+Synthetic exercise (Dail Octopus, case C04). "Dockline" is this prototype's
+product name; "C04" is the exercise's own case reference, used throughout
+`docs/`/`dev-docs/`. Not a real client, not connected to any real system.
+See `context/` for the source-of-truth brief, interview notes, and test
+data — that directory is not modified by the prototype.
 
 > **Status:** the app below is a v1 build, kept as a working reference. We
 > are re-designing before extending it further — see `docs/01-system-design.md`
@@ -36,26 +38,44 @@ with a human confirming every write:
 ## Run instructions
 
 ```bash
+# 1. Postgres (real persistence, see "Data flow" below)
+docker compose up -d
+
+# 2. The app
 cd app
 npm install   # already run once during the build; safe to skip if node_modules exists
-npm run dev -- -p 3311
+cp .env.local.example .env.local   # DATABASE_URL, already points at the compose Postgres
+npm run dev
 ```
 
-Open `http://localhost:3311`. Use the "Reset to seed state" button on any
-page to wipe in-memory state and reload from `context/initial.json` for a
-repeatable demo start.
+Open `http://localhost:3000` — a public landing/about page. "Log in"
+(any name, no real check — see "Real vs. simulated" below) takes you to
+`/dashboard`, and a 3D loading intro plays once per browser session on the
+way in. Use "Reset to seed state" on any page to truncate and reseed the
+database from `context/initial.json` for a repeatable demo start.
 
 ## Data flow
 
-- Seed data (`PO-1`, `DN-1`, `DN-2`, their receipts, `INV-1`) is read
-  read-only from `context/initial.json` on server start.
-- All state after that (new delivery notes, receipts, discarded-duplicate
-  log, discrepancy notices) lives in an in-memory store
-  (`app/app/lib/store.ts`) and is lost on server restart — this is a
-  prototype, not a persistence layer.
-- `app/app/lib/store.ts` also holds all the actual classification and
+- Seed data (`PO-1`, `DN-1`, `DN-2`, their receipts) is read read-only from
+  `context/initial.json` and loaded into Postgres on `POST /api/reset`.
+- Confirmed state after that (new delivery notes, receipts,
+  discarded-duplicate log, discrepancy notices) is written to Postgres
+  (`db/schema.sql`, via `app/app/lib/store.ts` and `app/app/lib/db.ts`) and
+  survives a server restart.
+- A **pending** scan or invoice (the system's proposal, before a human
+  confirms/approves it) is deliberately kept in memory only, not in
+  Postgres — per the design's "nothing is written before confirmation"
+  rule, it isn't state yet.
+- `app/app/lib/store.ts` holds all the actual classification and
   reconciliation logic. It is the file to read to see exactly what is
   "real" here.
+- The schema is plain Postgres (no Supabase-specific features), on purpose
+  — moving to an actual Supabase project later is a `DATABASE_URL` change
+  plus re-running `db/schema.sql`, not a rewrite. See
+  `docs/01-system-design.md` §9.
+- A Python/LangGraph + Gemini narrative service exists (`narrative-service/`)
+  but is **not currently wired in** — paused per "no LLM for now, it's just
+  a prototype." See its own README if you want to reconnect it.
 
 ## Real vs. simulated (for the handoff)
 
@@ -92,13 +112,17 @@ repeatable demo start.
   new delivery against it.
 - The discrepancy notice: generated and displayed after human approval,
   never actually sent to a supplier or posted to accounting.
-- Names entered for "clerk" / "approver" are free-text, not tied to a real
-  auth system.
+- The login screen and the 3D loading intro: cosmetic only. The name
+  entered at login is not checked against anything real, it just stands in
+  for the clerk/approver identity used throughout (free-text, no auth
+  system).
 
 ## Limitations
 
-- Single-process in-memory state — no database, no multi-user concurrency
-  handling, no persistence across restarts.
+- Real Postgres persistence for confirmed state, but no production
+  hardening — single instance, no migrations tooling, no multi-user
+  concurrency handling, reset truncates and reseeds rather than
+  versioning data.
 - Classification heuristic is intentionally simple (exact-quantity /
   PO-coverage matching). It has not been validated against real scan data,
   OCR noise, partial barcodes, or suppliers who split differently than this

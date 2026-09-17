@@ -13,22 +13,36 @@ this as work happens; don't let status live only in chat history. One task
       place of real answers (`docs/02-client-interview.md`).
 - [ ] Review v1's `app/app/lib/store.ts` line by line against
       `docs/01-system-design.md` and note every place they diverge.
-- [ ] Decide: keep the Next.js app shell from v1, or restart the app from
-      scratch against the new design? Record the decision and why.
+- [x] Decide: keep the Next.js app shell from v1, or restart the app from
+      scratch against the new design? Decision: keep the Next.js shell,
+      restyled to match the mandated design system (see
+      `docs/01-system-design.md` §9 and the build log).
 - [ ] Resolve or explicitly time-box the open questions in
       `docs/01-system-design.md` §7 — each one needs either a real answer or
       a stated assumption before build starts.
+- [x] Record the event's mandated tool stack (Claude Code, Next.js,
+      LangGraph, Python, Supabase, Gemini) and how deep each is integrated —
+      `docs/01-system-design.md` §9.
 - [ ] Sign off: design doc reviewed, ready to move to Phase 2.
 
 ## Phase 2 — Build
 
-Not started. Do not start until Phase 1 is signed off.
+Started ahead of formal Phase 1 sign-off (UI restyle + tool-stack decision
+already in progress) — remaining Phase 1 items above still need closing out.
 
-- [ ] Implement entities and state per `docs/01-system-design.md` §2.
-- [ ] Implement classification (`NEW` / `DUPLICATE` / `AMBIGUOUS`) per §4.
-- [ ] Implement reconciliation (accepted-quantity sum + evidence lines) per §5.
-- [ ] Implement the human confirm/approve gates — no write without them.
-- [ ] Label every simulated input/output in the UI.
+- [x] Implement entities and state per `docs/01-system-design.md` §2 —
+      Postgres (`db/schema.sql`), confirmed state persisted, pending
+      scan/invoice kept in memory by design.
+- [x] Implement classification (`NEW` / `DUPLICATE` / `AMBIGUOUS`) per §4.
+- [x] Implement reconciliation (accepted-quantity sum + evidence lines) per §5.
+- [x] Implement the human confirm/approve gates — no write without them.
+- [ ] Label every simulated input/output in the UI (login, incoming scan/
+      invoice buttons, discrepancy notice — audit which are still missing
+      the label).
+- [x] Build the Python/LangGraph + Gemini narrative service
+      (`narrative-service/`) — built, then paused per "no LLM for now, it's
+      just a prototype." Not called by the app currently; see
+      `docs/01-system-design.md` §9.
 - [ ] Log each significant event in `docs/03-build-log.md` as it happens.
 
 ## Phase 3 — Evidence, failure case, and handoff

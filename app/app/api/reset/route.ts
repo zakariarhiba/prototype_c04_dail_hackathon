@@ -1,6 +1,6 @@
 import { resetState } from "@/app/lib/store";
 
 export async function POST() {
-  resetState();
+  await resetState();
   return Response.json({ ok: true });
 }

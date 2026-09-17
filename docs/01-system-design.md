@@ -104,7 +104,47 @@ and rejected on DN-1, not credited on the invoice").
 - The incoming scan / incoming invoice events themselves (no real scanner or
   accounting feed).
 - The discrepancy notice's delivery (generated and shown, never sent).
-- Identity (free-text name, not a real auth system).
+- Identity (free-text name, not a real auth system, including the cosmetic
+  login screen added on top of the Next.js UI).
+
+**LLM-generated narrative — built, then paused (see §9):** a small
+Python/LangGraph service calling Gemini was built to turn already-computed
+facts into a human-readable sentence, with a templated fallback when the
+service or `GEMINI_API_KEY` is unavailable. It is not wired into the app
+right now — see §9 for why and where the code lives.
+
+## 9. Mandated tool stack (event requirement, not our earlier assumption)
+
+The event supplies a fixed toolset we must build against, given after this
+design doc's first draft: **Claude Code, Next.js, LangGraph, Python,
+Supabase, Gemini.** Decision on how deep to integrate each one (recorded
+here so it isn't re-litigated mid-build, and updated as the decision
+changed):
+
+- **Next.js** — stays the whole UI, as already built. No change.
+- **Postgres, moving to Supabase** — adopted now. Confirmed state
+  (delivery notes, receipts, discarded duplicates, discrepancy notices)
+  lives in Postgres (`db/schema.sql`, run via `docker-compose.yml`),
+  replacing the earlier in-memory `AppState`. The schema is deliberately
+  vanilla Postgres, no Supabase-specific features (no RLS, no `auth.*`),
+  so moving to an actual Supabase project later is just repointing
+  `DATABASE_URL` and re-running `db/schema.sql` — not a rewrite. A pending
+  scan/invoice (the system's unconfirmed *proposal*) stays in memory only,
+  per the "no write before confirm" rule in §3 — it was never meant to be
+  durable state.
+- **LangGraph + Python + Gemini** — built, then explicitly paused: "not
+  using Gemini or an LLM right now, it's just a prototype." The
+  `narrative-service/` directory (one LangGraph node calling Gemini to
+  rephrase already-computed facts into a sentence, with a templated
+  fallback) is left in the repo but not called by the Next.js app. Revisit
+  if there's time; the integration point (`system_reasoning` /
+  reconciliation evidence text) is unchanged and ready to reconnect.
+- **Claude Code** — used throughout to build this prototype.
+
+This keeps the deterministic, auditable core (the one thing the brief
+treats as non-negotiable, see §3) untouched by an LLM, while giving the
+mandated persistence tool a real, load-bearing role instead of a token
+integration.
 
 ## 7. Open questions before we build
 
@@ -125,7 +165,10 @@ during build — tracked in `02-client-interview.md`:
 
 ## 8. Non-goals (explicit)
 
-- No persistence/database — in-memory state, reset button, single process.
+- No production-grade persistence concerns (migrations tooling, backups,
+  connection pooling under load) — a single Postgres instance via
+  docker-compose, a reset endpoint that truncates and reseeds, single
+  process. Persistence itself is real (see §9), just not hardened.
 - No multi-user concurrency handling.
 - No real authentication.
 - No multi-part delivery notes or partial invoices.
